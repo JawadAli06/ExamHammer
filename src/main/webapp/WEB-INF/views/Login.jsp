@@ -34,12 +34,12 @@
 <div class="login-card shadow">
     <h3 class="text-center mb-4">Login</h3>
 
-   <form action="${pageContext.request.contextPath}/login" method="post">
-   
-        <!-- Username / Email -->
+    <form action="${pageContext.request.contextPath}/login" method="post">
+
+        <!-- Email -->
         <div class="mb-3">
-            <label class="form-label">Username or Email</label>
-            <input type="text" name="username" class="form-control" required>
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" required>
         </div>
 
         <!-- Password -->
@@ -68,8 +68,7 @@
     </form>
 </div>
 
-<!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-
 </body>
 </html>
+

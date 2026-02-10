@@ -1,13 +1,18 @@
 package com.Grownited.controller;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 
 import com.Grownited.entity.UserEntity;
+import com.Grownited.repository.UserRepository;
 
 @Controller
 public class SessionController {
+
+    @Autowired
+    private UserRepository userRepository;
 
     @GetMapping("/signup")
     public String openSignupPage() {
@@ -27,11 +32,12 @@ public class SessionController {
     @PostMapping("/register")
     public String register(UserEntity userEntity) {
 
-        // Set default role for signup
+        // default role for signup
         userEntity.setRole(UserEntity.Role.STUDENT);
+        userEntity.setActive(true);
 
-        System.out.println(userEntity.getFirstName());
-        System.out.println(userEntity.getLastName());
+        // save to database
+        userRepository.save(userEntity);
 
         return "Login";
     }
