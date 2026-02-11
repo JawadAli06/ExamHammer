@@ -12,33 +12,37 @@ import com.Grownited.repository.UserRepository;
 public class SessionController {
 
     @Autowired
-    private UserRepository userRepository;
+    UserRepository userRepository;
 
     @GetMapping("/signup")
-    public String openSignupPage() {
+    public String signup() {
         return "Signup";
     }
 
     @GetMapping("/login")
-    public String openLoginpage() {
+    public String login() {
         return "Login";
     }
 
     @GetMapping("/forgetPassword")
-    public String openForgetPassword() {
+    public String forgetPassword() {
         return "ForgetPassword";
     }
 
+    // SAVE USER
     @PostMapping("/register")
     public String register(UserEntity userEntity) {
 
-        // default role for signup
-        userEntity.setRole(UserEntity.Role.STUDENT);
-        userEntity.setActive(true);
+        // prevent duplicate email
+        if (userRepository.existsByEmail(userEntity.getEmail())) {
+            return "Signup";
+        }
 
-        // save to database
+        // default role
+        userEntity.setRole(UserEntity.Role.STUDENT);
+
         userRepository.save(userEntity);
 
-        return "Login";
+        return "redirect:/login";
     }
 }

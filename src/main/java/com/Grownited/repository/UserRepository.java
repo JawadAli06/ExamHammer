@@ -7,8 +7,8 @@ import com.Grownited.entity.UserEntity;
 @Repository
 public interface UserRepository extends JpaRepository<UserEntity, Integer> {
 
-    boolean existsByEmail(String email);
-
     UserEntity findByEmail(String email);
+
+    boolean existsByEmail(String email);
 }
 
