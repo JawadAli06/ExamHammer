@@ -18,7 +18,7 @@ public class SubjectEntity {
 
     private String description;
 
-    private Boolean active;
+    private Boolean active = true;
 
     public enum Category {
         SCHOOL, COLLEGE, JOB

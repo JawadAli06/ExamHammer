@@ -2,8 +2,10 @@ package com.Grownited.controller;
 
 import com.Grownited.entity.UserEntity;
 import com.Grownited.repository.UserRepository;
-
 import jakarta.servlet.http.HttpSession;
+
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -23,22 +25,33 @@ public class SessionController {
     }
 
     @PostMapping("/register")
-    public String register(UserEntity user, Model model) {
+    public String register(@ModelAttribute UserEntity user, Model model) {
 
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+            model.addAttribute("error", "Email is required");
+            return "Signup";
+        }
+
+        String email = user.getEmail().trim().toLowerCase();
+        user.setEmail(email);
+
+        if (userRepository.existsByEmail(email)) {
             model.addAttribute("error", "Email already registered");
             return "Signup";
         }
 
-        // Default role (optional if you allow selection)
         if (user.getRole() == null) {
             user.setRole(UserEntity.Role.STUDENT);
         }
 
-        userRepository.save(user);
-        model.addAttribute("success", "Registration successful. Please login.");
+        if (user.getActive() == null) {
+            user.setActive(true);
+        }
 
-        return "Login";
+        // plain password for now (BCrypt later)
+        userRepository.save(user);
+
+        return "redirect:/login";
     }
 
     // ================== LOGIN ==================
@@ -48,28 +61,48 @@ public class SessionController {
         return "Login";
     }
 
-    @PostMapping("/login")
-    public String login(@RequestParam String email,
-                        @RequestParam String password,
-                        HttpSession session,
-                        Model model) {
+   
+    
+    // Authentication
+    
+    @PostMapping("/authenticate")
+    public String authenticate(@RequestParam String email,
+                               @RequestParam String password,
+                               Model model,
+                               HttpSession session) {
 
-        UserEntity user = userRepository.findByEmail(email);
+        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
 
-        if (user == null || !user.getPassword().equals(password)) {
-            model.addAttribute("error", "Invalid email or password");
-            return "Login";
+        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
+
+        if (op.isPresent()) {
+            UserEntity dbUser = op.get();
+
+            // optional: active check
+            if (dbUser.getActive() != null && dbUser.getActive() == false) {
+                model.addAttribute("invalid", "Account is inactive");
+                return "Login";
+            }
+
+            // password check
+            if (dbUser.getPassword() != null && dbUser.getPassword().equals(password)) {
+
+                // create session only after successful password check
+                session.setAttribute("user", dbUser);
+
+                // redirect by role (enum)
+                if (dbUser.getRole() == UserEntity.Role.ADMIN) {
+                    return "redirect:/admin/dashboard";
+                } else if (dbUser.getRole() == UserEntity.Role.EXAMINER) {
+                    return "redirect:/examiner/dashboard";
+                } else {
+                    return "redirect:/student/dashboard";
+                }
+            }
         }
 
-        session.setAttribute("user", user);
-
-        if (user.getRole() == UserEntity.Role.ADMIN) {
-            return "redirect:/admin/dashboard";
-        } else if (user.getRole() == UserEntity.Role.EXAMINER) {
-            return "redirect:/examiner/dashboard";
-        } else {
-            return "redirect:/student/dashboard";
-        }
+        model.addAttribute("invalid", "Invalid email or password");
+        return "Login";
     }
 
     // ================== FORGET PASSWORD ==================
@@ -84,18 +117,20 @@ public class SessionController {
                                 @RequestParam String newPassword,
                                 Model model) {
 
-        UserEntity user = userRepository.findByEmail(email);
+        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
 
-        if (user == null) {
+        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
+
+        if (op.isEmpty()) {
             model.addAttribute("error", "Email not found");
             return "ForgetPassword";
         }
 
-        user.setPassword(newPassword);
+        UserEntity user = op.get();
+        user.setPassword(newPassword); // BCrypt later
         userRepository.save(user);
 
-        model.addAttribute("success", "Password updated successfully. Please login.");
-        return "Login";
+        return "redirect:/login";
     }
 
     // ================== LOGOUT ==================

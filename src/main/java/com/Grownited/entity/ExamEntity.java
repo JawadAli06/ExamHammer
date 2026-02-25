@@ -18,9 +18,14 @@ public class ExamEntity {
     @Column(nullable = false)
     private ExamType examType;
 
+    
     @ManyToOne
-    @JoinColumn(name = "subject_id", nullable = false)
+   @JoinColumn(name = "subject_id", nullable = false)
     private SubjectEntity subject;
+    
+    @Column(name="subject_name", nullable = false)
+    private String subjectName; 
+
 
     @Column(nullable = false)
     private Integer totalQuestions;
@@ -87,18 +92,27 @@ public class ExamEntity {
     }
 
     public SubjectEntity getSubject() {
-        return subject;
-    }
+       return subject;
+     }
 
     public void setSubject(SubjectEntity subject) {
-        this.subject = subject;
-    }
+       this.subject = subject;
+   }
 
+    
     public Integer getTotalQuestions() {
         return totalQuestions;
     }
 
-    public void setTotalQuestions(Integer totalQuestions) {
+   public String getSubjectName() {
+		return subjectName;
+	}
+
+	public void setSubjectName(String subjectName) {
+		this.subjectName = subjectName;
+	} 
+
+	public void setTotalQuestions(Integer totalQuestions) {
         this.totalQuestions = totalQuestions;
     }
 
