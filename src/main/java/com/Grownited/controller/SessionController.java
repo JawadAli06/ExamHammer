@@ -1,26 +1,35 @@
 package com.Grownited.controller;
 
 import com.Grownited.entity.UserEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.apache.naming.factory.SendMailFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.Grownited.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 
 import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import com.Grownited.service.MailerService;
+
 @Controller
 public class SessionController {
 	
 	
-    @Autowired
+   // private static final UserEntity  = null;
+
+	@Autowired
     private UserRepository userRepository;
     
-   // @Autowired
-	//PasswordEncoder passwordEncoder;
+    
+    @Autowired
+    private MailerService mailerService;
+	
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
 
     // ================== SIGNUP ==================
 
@@ -31,7 +40,9 @@ public class SessionController {
 
     @PostMapping("/register")
     public String register(@ModelAttribute UserEntity user, Model model) {
-
+    	
+    	System.out.println("EMAIL = " + user.getEmail());
+    	
         if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
             model.addAttribute("error", "Email is required");
             return "Signup";
@@ -52,16 +63,15 @@ public class SessionController {
         if (user.getActive() == null) {
             user.setActive(true);
         }
-     // CREATE ENCODER HERE
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
-        // ENCRYPT PASSWORD
-        user.setPassword(encoder.encode(user.getPassword()));
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
 
         // plain password for now (BCrypt later)
         userRepository.save(user);
-
+        
+        
+        mailerService.sendWelcomeMail(user);
+      
         return "redirect:/login";
     }
 
@@ -76,7 +86,7 @@ public class SessionController {
     
     // Authentication
     
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    
 
     @PostMapping("/authenticate")
     public String authenticate(@RequestParam String email,
@@ -169,7 +179,31 @@ public class SessionController {
         return "ForgetPassword";
     }
 
+
+
     @PostMapping("/resetPassword")
+    public String resetPassword(@RequestParam String email,
+                                @RequestParam String newPassword,
+                                Model model) {
+
+        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
+
+        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
+        if (op.isEmpty()) {
+            model.addAttribute("error", "Email not found");
+            return "ForgetPassword";
+        }
+
+        UserEntity user = op.get();
+
+        // IMPORTANT: encrypt new password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        return "redirect:/login";
+    }
+    
+   /* @PostMapping("/resetPassword")
     public String resetPassword(@RequestParam String email,
                                 @RequestParam String newPassword,
                                 Model model) {
@@ -188,7 +222,7 @@ public class SessionController {
         userRepository.save(user);
 
         return "redirect:/login";
-    }
+    }*/
 
     // ================== LOGOUT ==================
 
