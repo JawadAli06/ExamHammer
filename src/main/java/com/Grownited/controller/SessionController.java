@@ -1,6 +1,7 @@
 package com.Grownited.controller;
 
 import com.Grownited.entity.UserEntity;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.Grownited.repository.UserRepository;
 import jakarta.servlet.http.HttpSession;
 
@@ -10,12 +11,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 @Controller
 public class SessionController {
-
+	
+	
     @Autowired
     private UserRepository userRepository;
+    
+   // @Autowired
+	//PasswordEncoder passwordEncoder;
 
     // ================== SIGNUP ==================
 
@@ -47,6 +52,12 @@ public class SessionController {
         if (user.getActive() == null) {
             user.setActive(true);
         }
+     // CREATE ENCODER HERE
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+        // ENCRYPT PASSWORD
+        user.setPassword(encoder.encode(user.getPassword()));
+
 
         // plain password for now (BCrypt later)
         userRepository.save(user);
@@ -65,7 +76,47 @@ public class SessionController {
     
     // Authentication
     
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
     @PostMapping("/authenticate")
+    public String authenticate(@RequestParam String email,
+                               @RequestParam String password,
+                               Model model,
+                               HttpSession session) {
+
+        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
+
+        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
+
+        if (op.isEmpty()) {
+            model.addAttribute("invalid", "Invalid email or password");
+            return "Login";
+        }
+
+        UserEntity dbUser = op.get();
+
+        if (dbUser.getActive() != null && dbUser.getActive() == false) {
+            model.addAttribute("invalid", "Account is inactive");
+            return "Login";
+        }
+
+        if (dbUser.getPassword() == null || !passwordEncoder.matches(password, dbUser.getPassword())) {
+            model.addAttribute("invalid", "Invalid email or password");
+            return "Login";
+        }
+
+        session.setAttribute("user", dbUser);
+
+        if (dbUser.getRole() == UserEntity.Role.ADMIN) {
+            return "redirect:/admin/dashboard";
+        } else if (dbUser.getRole() == UserEntity.Role.EXAMINER) {
+            return "redirect:/examiner/dashboard";
+        } else {
+            return "redirect:/student/dashboard";
+        }
+    }
+    
+   /* @PostMapping("/authenticate")
     public String authenticate(@RequestParam String email,
                                @RequestParam String password,
                                Model model,
@@ -77,6 +128,12 @@ public class SessionController {
 
         if (op.isPresent()) {
             UserEntity dbUser = op.get();
+            
+         // CREATE ENCODER HERE
+            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+
+            // MATCH PASSWORD
+            if (encoder.matches(password, dbUser.getPassword())) 
 
             // optional: active check
             if (dbUser.getActive() != null && dbUser.getActive() == false) {
@@ -103,7 +160,7 @@ public class SessionController {
 
         model.addAttribute("invalid", "Invalid email or password");
         return "Login";
-    }
+    }*/
 
     // ================== FORGET PASSWORD ==================
 
