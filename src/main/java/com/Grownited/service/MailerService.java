@@ -1,5 +1,6 @@
 package com.Grownited.service;
 
+
 import com.Grownited.entity.UserEntity;
 import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,4 +78,56 @@ public class MailerService {
             e.printStackTrace();
         }
     }
+    public void sendOtpMail(String toEmail, String name, String otp) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(toEmail);
+            helper.setSubject("ExamHammer - Password Reset OTP");
+
+            String safeName = (name == null || name.trim().isEmpty()) ? "User" : name.trim();
+
+            String html = """
+                <div style="background:#f2f4ff;padding:25px 0;font-family:Arial, sans-serif;">
+                  <div style="max-width:520px;margin:0 auto;background:#ffffff;border:1px solid #e6e6e6;border-radius:12px;overflow:hidden;">
+                    <div style="background:#2f3cff;color:#ffffff;padding:18px 22px;">
+                      <h2 style="margin:0;font-size:20px;">ExamHammer</h2>
+                      <p style="margin:6px 0 0;font-size:13px;opacity:0.9;">Password reset OTP</p>
+                    </div>
+
+                    <div style="padding:22px;">
+                      <p style="margin:0 0 10px;font-size:14px;color:#111;">Hello <b>%s</b>,</p>
+                      <p style="margin:0 0 14px;font-size:13px;color:#333;line-height:1.5;">
+                        Use the OTP below to reset your password. This OTP is valid for <b>10 minutes</b>.
+                      </p>
+
+                      <div style="text-align:center;margin:18px 0;">
+                        <div style="display:inline-block;padding:14px 22px;border-radius:10px;border:1px dashed #2f3cff;background:#f7f8ff;
+                                    font-size:22px;letter-spacing:6px;font-weight:bold;color:#2f3cff;">
+                          %s
+                        </div>
+                      </div>
+
+                      <p style="margin:16px 0 0;font-size:12px;color:#777;">
+                        If you didn’t request this, you can ignore this email.
+                      </p>
+                    </div>
+
+                    <div style="background:#f7f7f7;padding:12px 22px;font-size:11px;color:#777;text-align:center;">
+                      This is an automated email. Please do not reply.
+                    </div>
+                  </div>
+                </div>
+                """.formatted(safeName, otp);
+
+            helper.setText(html, true);
+            mailSender.send(message);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }
+
+

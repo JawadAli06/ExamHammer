@@ -1,7 +1,7 @@
 package com.Grownited.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "exam")
@@ -18,7 +18,6 @@ public class ExamEntity {
     @Column(nullable = false)
     private ExamType examType;
 
-    
     @ManyToOne
    @JoinColumn(name = "subject_id", nullable = false)
     private SubjectEntity subject;
@@ -42,11 +41,12 @@ public class ExamEntity {
 
     private Boolean negativeMarking;
 
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
-
+    
     private Integer passingScore;
 
+    private LocalDate startDate;
+    private LocalDate endDate;
+    
     @ManyToOne
     @JoinColumn(name = "created_by", nullable = false)
     private UserEntity createdBy; // ADMIN
@@ -148,23 +148,24 @@ public class ExamEntity {
         this.negativeMarking = negativeMarking;
     }
 
-    public LocalDateTime getStartDate() {
-        return startDate;
-    }
+    
+	public LocalDate getStartDate() {
+		return startDate;
+	}
 
-    public void setStartDate(LocalDateTime startDate) {
-        this.startDate = startDate;
-    }
+	public void setStartDate(LocalDate startDate) {
+		this.startDate = startDate;
+	}
 
-    public LocalDateTime getEndDate() {
-        return endDate;
-    }
+	public LocalDate getEndDate() {
+		return endDate;
+	}
 
-    public void setEndDate(LocalDateTime endDate) {
-        this.endDate = endDate;
-    }
+	public void setEndDate(LocalDate endDate) {
+		this.endDate = endDate;
+	}
 
-    public Integer getPassingScore() {
+	public Integer getPassingScore() {
         return passingScore;
     }
 

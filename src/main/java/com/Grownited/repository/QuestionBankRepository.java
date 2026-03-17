@@ -11,4 +11,6 @@ public interface QuestionBankRepository
         extends JpaRepository<QuestionBankEntity, Integer> {
 
     List<QuestionBankEntity> findBySubject(SubjectEntity subject);
+    
+    List<QuestionBankEntity> findByExam_ExamId(Integer examId);
 }

@@ -1,4 +1,4 @@
-<%@ include file="/WEB-INF/views/common/header.jsp" %>
+<%@ include file="/WEB-INF/views/admin/header.jsp" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 
 <h3>Add / Edit User</h3>
@@ -68,4 +68,4 @@
 
 </form>
 
-<%@ include file="/WEB-INF/views/common/footer.jsp" %>
+<%@ include file="/WEB-INF/views/admin/footer.jsp" %>

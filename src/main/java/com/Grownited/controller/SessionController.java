@@ -223,7 +223,80 @@ public class SessionController {
 
         return "redirect:/login";
     }*/
+    @PostMapping("/sendOtp")
+    public String sendOtp(@RequestParam String email, Model model, HttpSession session) {
 
+        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
+
+        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
+        if (op.isEmpty()) {
+            model.addAttribute("error", "Email not found");
+            return "ForgetPassword";
+        }
+
+        UserEntity user = op.get();
+
+        String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
+
+        user.setOtp(otp);
+        userRepository.save(user);
+
+        session.setAttribute("otpEmail", cleanEmail);
+        session.setAttribute("otpTime", System.currentTimeMillis());
+
+        mailerService.sendOtpMail(user.getEmail(), user.getFirstName(), otp);
+
+        model.addAttribute("msg", "OTP sent to your email");
+        return "VerifyOtp";
+    }
+    
+    
+    @PostMapping("/verifyOtpAndReset")
+    public String verifyOtpAndReset(@RequestParam String otp,
+                                    @RequestParam String newPassword,
+                                    Model model,
+                                    HttpSession session) {
+
+        Object emailObj = session.getAttribute("otpEmail");
+        Object timeObj = session.getAttribute("otpTime");
+
+        if (emailObj == null || timeObj == null) {
+            model.addAttribute("error", "Session expired. Please try again.");
+            return "ForgetPassword";
+        }
+
+        String email = emailObj.toString();
+        long otpTime = (long) timeObj;
+
+        if (System.currentTimeMillis() - otpTime > 10 * 60 * 1000) {
+            model.addAttribute("error", "OTP expired. Please request again.");
+            return "ForgetPassword";
+        }
+
+        Optional<UserEntity> op = userRepository.findByEmail(email);
+        if (op.isEmpty()) {
+            model.addAttribute("error", "User not found");
+            return "ForgetPassword";
+        }
+
+        UserEntity user = op.get();
+
+        if (user.getOtp() == null || !user.getOtp().equals(otp)) {
+            model.addAttribute("error", "Invalid OTP");
+            return "VerifyOtp";
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setOtp(null);
+        userRepository.save(user);
+
+        session.removeAttribute("otpEmail");
+        session.removeAttribute("otpTime");
+
+        return "redirect:/login";
+    }
+    
+    
     // ================== LOGOUT ==================
 
     @GetMapping("/logout")

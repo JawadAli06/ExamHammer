@@ -13,9 +13,9 @@ public class DifficultyLevelEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, unique = true)
     private Level level;
-
+   
     private Boolean active;
-
+    
     public enum Level {
         EASY,
         MEDIUM,
@@ -23,7 +23,9 @@ public class DifficultyLevelEntity {
         BEGINNER
     }
 
-    public DifficultyLevelEntity() {
+    
+
+	public DifficultyLevelEntity() {
         this.active = true;
     }
 

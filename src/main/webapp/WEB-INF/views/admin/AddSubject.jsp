@@ -1,4 +1,4 @@
-<%@ include file="/WEB-INF/views/common/header.jsp" %>
+<%@ include file="/WEB-INF/views/admin/header.jsp" %>
 
 <div class="container mt-4">
     <h3>Add Subject</h3>
@@ -17,4 +17,4 @@
     </form>
 </div>
 
-<%@ include file="/WEB-INF/views/common/footer.jsp" %>
+<%@ include file="/WEB-INF/views/admin/footer.jsp" %>

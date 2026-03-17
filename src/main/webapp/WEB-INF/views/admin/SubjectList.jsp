@@ -1,6 +1,6 @@
 
-<%@ include file="/WEB-INF/views/common/header.jsp" %>
-<%@ taglib uri="jakarta.tags.core" prefix="c" %>
+<%@ include file="/WEB-INF/views/admin/header.jsp" %>
+
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 
 <!DOCTYPE html>
@@ -30,4 +30,4 @@
     </tbody>
 </table>
 
-<%@ include file="/WEB-INF/views/common/footer.jsp" %>
+<%@ include file="/WEB-INF/views/admin/footer.jsp" %>

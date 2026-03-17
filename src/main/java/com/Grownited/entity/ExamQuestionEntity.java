@@ -41,5 +41,6 @@ public class ExamQuestionEntity {
     public void setQuestion(QuestionBankEntity question) {
         this.question = question;
     }
+    
 }
 

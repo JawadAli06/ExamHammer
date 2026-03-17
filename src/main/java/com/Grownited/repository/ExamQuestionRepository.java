@@ -10,6 +10,7 @@ import com.Grownited.entity.ExamQuestionEntity;
 public interface ExamQuestionRepository
         extends JpaRepository<ExamQuestionEntity, Integer> {
 
-    List<ExamQuestionEntity> findByExam(ExamEntity exam);
+   // List<ExamQuestionEntity> findByExam(ExamEntity exam);
+    List<ExamQuestionEntity> findByExam_ExamId(Integer examId);
 }
 
