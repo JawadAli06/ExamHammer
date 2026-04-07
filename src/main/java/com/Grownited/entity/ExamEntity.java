@@ -7,7 +7,9 @@ import java.time.LocalDate;
 @Table(name = "exam")
 public class ExamEntity {
 
-    @Id
+    public static final String Difficulty = null;
+
+	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer examId;
 
@@ -19,8 +21,9 @@ public class ExamEntity {
     private ExamType examType;
 
     @ManyToOne
-   @JoinColumn(name = "subject_id", nullable = false)
+   @JoinColumn(name = "subject_id")//, nullable = false)
     private SubjectEntity subject;
+    
     
     @Column(name="subject_name", nullable = false)
     private String subjectName; 
@@ -48,8 +51,8 @@ public class ExamEntity {
     private LocalDate endDate;
     
     @ManyToOne
-    @JoinColumn(name = "created_by", nullable = false)
-    private UserEntity createdBy; // ADMIN
+    @JoinColumn(name = "created_by")
+    private UserEntity createdBy; // ADMIN/Examiner
 
     @Enumerated(EnumType.STRING)
     private Status status;
@@ -136,8 +139,8 @@ public class ExamEntity {
         return difficulty;
     }
 
-    public void setDifficulty(DifficultyLevelEntity difficulty) {
-        this.difficulty = difficulty;
+    public void setDifficulty(DifficultyLevelEntity string) {
+        this.difficulty = string;
     }
 
     public Boolean getNegativeMarking() {
@@ -188,4 +191,5 @@ public class ExamEntity {
     public void setStatus(Status status) {
         this.status = status;
     }
+    
 }

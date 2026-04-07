@@ -1,86 +1,73 @@
 package com.Grownited.controller;
 
+import com.Grownited.entity.ExamAttemptEntity;
 import com.Grownited.entity.ExamEntity;
+import com.Grownited.entity.ExamQuestionEntity;
+import com.Grownited.entity.QuestionBankEntity;
 import com.Grownited.entity.UserEntity;
 import com.Grownited.repository.ExamAttemptRepository;
 import com.Grownited.repository.ExamQuestionRepository;
 import com.Grownited.repository.ExamRepository;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/student")
 public class StudentController {
 
-    @Autowired
-    private ExamRepository examRepository;
+    @Autowired private ExamRepository examRepository;
+    @Autowired private ExamQuestionRepository examQuestionRepository;
+    @Autowired private ExamAttemptRepository examAttemptRepository;
 
-    @Autowired
-    private ExamQuestionRepository examQuestionRepository;
+    // helper
+    private boolean isStudent(HttpSession session) {
+        UserEntity user = (UserEntity) session.getAttribute("user");
+        return user != null && user.getRole() == UserEntity.Role.STUDENT;
+    }
 
-    @Autowired(required = false)
-    private ExamAttemptRepository examAttemptRepository;
-
-    public ExamRepository getExamRepository() {
-		return examRepository;
-	}
-
-	public void setExamRepository(ExamRepository examRepository) {
-		this.examRepository = examRepository;
-	}
-
-	public ExamQuestionRepository getExamQuestionRepository() {
-		return examQuestionRepository;
-	}
-
-	public void setExamQuestionRepository(ExamQuestionRepository examQuestionRepository) {
-		this.examQuestionRepository = examQuestionRepository;
-	}
-
-	public ExamAttemptRepository getExamAttemptRepository() {
-		return examAttemptRepository;
-	}
-
-	public void setExamAttemptRepository(ExamAttemptRepository examAttemptRepository) {
-		this.examAttemptRepository = examAttemptRepository;
-	}
-
-	@GetMapping("/dashboard")
+    // =========================
+    // DASHBOARD
+    // =========================
+    @GetMapping("/dashboard")
     public String dashboard(Model model, HttpSession session) {
+        if (!isStudent(session)) return "redirect:/login";
         UserEntity student = (UserEntity) session.getAttribute("user");
-        if (student == null || student.getRole() != UserEntity.Role.STUDENT) {
-            return "redirect:/login";
-        }
 
-        model.addAttribute("activeExams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
-        model.addAttribute("activeExamsCount", examRepository.countByStatus(ExamEntity.Status.ACTIVE));
+        long activeExamsCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
 
-        // if result module not ready yet, keep 0
-        model.addAttribute("resultCount", 0);
+        // FIXED: use findByStudent(student) — not findByStudentUserId
+        long resultCount = examAttemptRepository.countByStudent(student);
+
+        model.addAttribute("activeExams",      examRepository.findByStatus(ExamEntity.Status.ACTIVE));
+        model.addAttribute("activeExamsCount", activeExamsCount);
+        model.addAttribute("resultCount",      resultCount);
 
         return "student/StudentDashboard";
     }
 
+    // =========================
+    // EXAM LIST
+    // =========================
     @GetMapping("/exams")
     public String examList(Model model, HttpSession session) {
-        UserEntity student = (UserEntity) session.getAttribute("user");
-        if (student == null || student.getRole() != UserEntity.Role.STUDENT) {
-            return "redirect:/login";
-        }
-
+        if (!isStudent(session)) return "redirect:/login";
         model.addAttribute("exams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
         return "student/ExamList";
     }
 
+    // =========================
+    // EXAM DETAILS
+    // =========================
     @GetMapping("/exam/{id}")
-    public String examDetails(@PathVariable Integer id, Model model, HttpSession session) {
-        UserEntity student = (UserEntity) session.getAttribute("user");
-        if (student == null || student.getRole() != UserEntity.Role.STUDENT) {
-            return "redirect:/login";
-        }
+    public String examDetails(@PathVariable Integer id,
+                              Model model, HttpSession session) {
+        if (!isStudent(session)) return "redirect:/login";
 
         ExamEntity exam = examRepository.findById(id).orElse(null);
         if (exam == null) return "redirect:/student/exams";
@@ -89,24 +76,121 @@ public class StudentController {
         return "student/ExamDetails";
     }
 
+    // =========================
+    // START EXAM
+    // =========================
     @GetMapping("/startExam/{id}")
-    public String startExam(@PathVariable Integer id, Model model, HttpSession session) {
-        UserEntity student = (UserEntity) session.getAttribute("user");
-        if (student == null || student.getRole() != UserEntity.Role.STUDENT) {
-            return "redirect:/login";
-        }
+    public String startExam(@PathVariable Integer id,
+                            Model model, HttpSession session) {
+        if (!isStudent(session)) return "redirect:/login";
 
         ExamEntity exam = examRepository.findById(id).orElse(null);
         if (exam == null) return "redirect:/student/exams";
 
         model.addAttribute("exam", exam);
-        model.addAttribute("examQuestions", examQuestionRepository.findByExam_ExamId(id));
+        model.addAttribute("examQuestions",
+                examQuestionRepository.findByExam_ExamId(id));
 
         return "student/StartExam";
     }
 
+    // =========================
+    // SUBMIT EXAM
+    // =========================
+    @PostMapping("/submitExam")
+    public String submitExam(@RequestParam Integer examId,
+                             HttpServletRequest request,
+                             Model model, HttpSession session) {
+
+        if (!isStudent(session)) return "redirect:/login";
+        UserEntity student = (UserEntity) session.getAttribute("user");
+
+        ExamEntity exam = examRepository.findById(examId).orElse(null);
+        if (exam == null) return "redirect:/student/exams";
+
+        List<ExamQuestionEntity> examQuestions =
+                examQuestionRepository.findByExam_ExamId(examId);
+
+        int totalQuestions = examQuestions.size();
+        int correctAnswers = 0;
+        int wrongAnswers   = 0;
+        int unanswered     = 0;
+        double marksObtained = 0.0;
+        double totalMarks    = 0.0;
+
+        for (ExamQuestionEntity eq : examQuestions) {
+            QuestionBankEntity q = eq.getQuestion();
+            if (q == null) continue;
+
+            double qMarks = (q.getMarks() != null) ? q.getMarks() : 0.0;
+            totalMarks += qMarks;
+
+            String selected = request.getParameter("answer_" + q.getQuestionId());
+            String correct  = q.getCorrectOption();
+
+            if (selected == null || selected.isBlank()) {
+                unanswered++;
+            } else if (selected.equalsIgnoreCase(correct)) {
+                correctAnswers++;
+                marksObtained += qMarks;
+            } else {
+                wrongAnswers++;
+                if (Boolean.TRUE.equals(exam.getNegativeMarking())) {
+                    marksObtained -= 0.25;
+                }
+            }
+        }
+
+        double percentage = (totalMarks > 0)
+                ? Math.round((marksObtained / totalMarks) * 10000.0) / 100.0
+                : 0.0;
+        marksObtained = Math.round(marksObtained * 100.0) / 100.0;
+
+        boolean passed = exam.getPassingScore() != null
+                && marksObtained >= exam.getPassingScore();
+
+        // Save attempt
+        ExamAttemptEntity attempt = new ExamAttemptEntity();
+        attempt.setExam(exam);
+        attempt.setStudent(student);
+        attempt.setCreatedBy(exam.getCreatedBy());
+        attempt.setStartTime(java.time.LocalDateTime.now());
+        attempt.setEndTime(java.time.LocalDateTime.now());
+        attempt.setTotalScore(marksObtained);
+        attempt.setPercentage(percentage);
+        attempt.setStatus(ExamAttemptEntity.Status.COMPLETED);
+        attempt.setResult(passed
+                ? ExamAttemptEntity.Result.PASS
+                : ExamAttemptEntity.Result.FAIL);
+        examAttemptRepository.save(attempt);
+
+        model.addAttribute("exam",           exam);
+        model.addAttribute("student",        student);
+        model.addAttribute("totalQuestions", totalQuestions);
+        model.addAttribute("correctAnswers", correctAnswers);
+        model.addAttribute("wrongAnswers",   wrongAnswers);
+        model.addAttribute("unanswered",     unanswered);
+        model.addAttribute("marksObtained",  marksObtained);
+        model.addAttribute("totalMarks",     totalMarks);
+        model.addAttribute("percentage",     percentage);
+        model.addAttribute("passed",         passed);
+
+        return "student/ExamResult";
+    }
+
+    // =========================
+    // MY RESULTS
+    // =========================
     @GetMapping("/results")
-    public String resultsPage() {
-        return "student/ResultList";
+    public String studentResults(HttpSession session, Model model) {
+        if (!isStudent(session)) return "redirect:/login";
+        UserEntity student = (UserEntity) session.getAttribute("user");
+
+        // FIXED: findByStudent(student) — correct method name
+        List<ExamAttemptEntity> results =
+                examAttemptRepository.findByStudent(student);
+
+        model.addAttribute("results", results);
+        return "student/Results";
     }
 }

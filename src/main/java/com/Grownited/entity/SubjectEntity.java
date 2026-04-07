@@ -5,6 +5,11 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "subject")
 public class SubjectEntity {
+	
+	 // NEW: who created this subject (admin or examiner)
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private UserEntity createdBy;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -67,4 +72,13 @@ public class SubjectEntity {
     public void setActive(Boolean active) {
         this.active = active;
     }
+
+	public UserEntity getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(UserEntity createdBy) {
+		this.createdBy = createdBy;
+	}
+    
 }
