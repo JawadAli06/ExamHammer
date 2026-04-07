@@ -17,7 +17,11 @@ public class ExamQuestionEntity {
     @ManyToOne
     @JoinColumn(name = "question_id", nullable = false)
     private QuestionBankEntity question;
-
+    
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private UserEntity createdBy;
+    
     public Integer getExamQuestionId() {
         return examQuestionId;
     }
@@ -41,6 +45,14 @@ public class ExamQuestionEntity {
     public void setQuestion(QuestionBankEntity question) {
         this.question = question;
     }
+
+	public UserEntity getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(UserEntity createdBy) {
+		this.createdBy = createdBy;
+	}
     
 }
 

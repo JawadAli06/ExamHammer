@@ -42,7 +42,7 @@
   <div>
     <h2 class="m-0">Examiner Dashboard</h2>
     <p class="text-muted m-0" style="font-size:14px;">
-      Manage questions, exams, and examiner activities.
+      Manage subjects, exams, questions, and results.
     </p>
   </div>
 </div>
@@ -51,26 +51,28 @@
 
 <div class="row g-3">
 
+  <!-- Total Subjects -->
   <div class="col-12 col-md-6 col-xl-3">
-    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/questions'">
+    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/subjects'">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="widget-label">Total Questions</div>
-          <div class="widget-num">${totalQuestions != null ? totalQuestions : 0}</div>
+          <div class="widget-label">Total Subjects</div>
+          <div class="widget-num">${subjectCount != null ? subjectCount : 0}</div>
         </div>
         <div class="widget-icon" style="background:#e8f1ff;color:#0d6efd;">
-          <i class="bi bi-patch-question"></i>
+          <i class="bi bi-book"></i>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- Total Exams -->
   <div class="col-12 col-md-6 col-xl-3">
     <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/exams'">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="widget-label">My Exams</div>
-          <div class="widget-num">${myExams != null ? myExams : 0}</div>
+          <div class="widget-label">Total Exams</div>
+          <div class="widget-num">${examCount != null ? examCount : 0}</div>
         </div>
         <div class="widget-icon" style="background:#e9fbf2;color:#198754;">
           <i class="bi bi-ui-checks-grid"></i>
@@ -79,29 +81,31 @@
     </div>
   </div>
 
+  <!-- My Questions -->
   <div class="col-12 col-md-6 col-xl-3">
-    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/addQuestion'">
+    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/questions'">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="widget-label">Add Question</div>
-          <div class="widget-num">+</div>
+          <div class="widget-label">My Questions</div>
+          <div class="widget-num">${questionCount != null ? questionCount : 0}</div>
         </div>
         <div class="widget-icon" style="background:#fff6e8;color:#fd7e14;">
-          <i class="bi bi-plus-circle"></i>
+          <i class="bi bi-patch-question"></i>
         </div>
       </div>
     </div>
   </div>
 
+  <!-- My Results -->
   <div class="col-12 col-md-6 col-xl-3">
-    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/questions'">
+    <div class="widget-card" onclick="location.href='${pageContext.request.contextPath}/examiner/results'">
       <div class="d-flex justify-content-between align-items-center">
         <div>
-          <div class="widget-label">Question Bank</div>
-          <div class="widget-num">${totalQuestions != null ? totalQuestions : 0}</div>
+          <div class="widget-label">My Exam Results</div>
+          <div class="widget-num">${resultCount != null ? resultCount : 0}</div>
         </div>
         <div class="widget-icon" style="background:#ffecec;color:#dc3545;">
-          <i class="bi bi-folder2-open"></i>
+          <i class="bi bi-bar-chart-line"></i>
         </div>
       </div>
     </div>
@@ -118,6 +122,7 @@
           <a href="${pageContext.request.contextPath}/examiner/addQuestion" class="btn btn-primary">Add Question</a>
           <a href="${pageContext.request.contextPath}/examiner/questions" class="btn btn-outline-success">Manage Questions</a>
           <a href="${pageContext.request.contextPath}/examiner/exams" class="btn btn-outline-secondary">View Exams</a>
+          <a href="${pageContext.request.contextPath}/examiner/results" class="btn btn-outline-danger">View Results</a>
         </div>
       </div>
     </div>
@@ -128,9 +133,10 @@
       <div class="card-body">
         <h5 class="card-title">Examiner Notes</h5>
         <ul class="list-group list-group-flush">
-          <li class="list-group-item">You can add and manage questions.</li>
-          <li class="list-group-item">You can view exams created for question mapping.</li>
-          <li class="list-group-item">You can expand this later with Question Bank and Results.</li>
+          <li class="list-group-item">All admin + examiner subjects are visible here.</li>
+          <li class="list-group-item">All admin + examiner exams are visible here.</li>
+          <li class="list-group-item">My Questions count shows only questions added by this examiner.</li>
+          <li class="list-group-item">My Exam Results shows student attempts on this examiner's exams.</li>
         </ul>
       </div>
     </div>

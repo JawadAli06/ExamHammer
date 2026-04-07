@@ -1,4 +1,3 @@
-
 package com.Grownited.entity;
 
 import jakarta.persistence.*;
@@ -19,7 +18,6 @@ public class QuestionBankEntity {
     @JoinColumn(name = "subject_id", nullable = false)
     private SubjectEntity subject;
 
-   
     @ManyToOne
     @JoinColumn(name = "difficulty_id", nullable = false)
     private DifficultyLevelEntity difficulty;
@@ -43,15 +41,13 @@ public class QuestionBankEntity {
 
     @Column(nullable = false)
     private String correctOption;
-    
-   
 
     @Column(length = 2000)
     private String explanation;
 
     @ManyToOne
     @JoinColumn(name = "created_by", nullable = false)
-    private UserEntity createdBy; // ADMIN or EXAMINER
+    private UserEntity createdBy;
 
     private Boolean active;
 
@@ -82,17 +78,16 @@ public class QuestionBankEntity {
     public void setDifficulty(DifficultyLevelEntity difficulty) {
         this.difficulty = difficulty;
     }
-    
 
     public Integer getMarks() {
-		return marks;
-	}
+        return marks;
+    }
 
-	public void setMarks(Integer marks) {
-		this.marks = marks;
-	}
+    public void setMarks(Integer marks) {
+        this.marks = marks;
+    }
 
-	public String getQuestionText() {
+    public String getQuestionText() {
         return questionText;
     }
 
@@ -164,13 +159,11 @@ public class QuestionBankEntity {
         this.active = active;
     }
 
-	public ExamEntity getExam() {
-		return exam;
-	}
+    public ExamEntity getExam() {
+        return exam;
+    }
 
-	public void setExam(ExamEntity exam) {
-		this.exam = exam;
-	}
-
-	
+    public void setExam(ExamEntity exam) {
+        this.exam = exam;
+    }
 }

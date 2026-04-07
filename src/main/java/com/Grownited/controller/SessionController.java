@@ -1,35 +1,26 @@
 package com.Grownited.controller;
 
 import com.Grownited.entity.UserEntity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.apache.naming.factory.SendMailFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import com.Grownited.repository.UserRepository;
+import com.Grownited.service.CloudinaryService;
+import com.Grownited.service.MailerService;
 import jakarta.servlet.http.HttpSession;
-
-import java.util.Optional;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import com.Grownited.service.MailerService;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Optional;
 
 @Controller
 public class SessionController {
-	
-	
-   // private static final UserEntity  = null;
 
-	@Autowired
-    private UserRepository userRepository;
-    
-    
-    @Autowired
-    private MailerService mailerService;
-	
-    @Autowired
-    private BCryptPasswordEncoder passwordEncoder;
+    @Autowired private UserRepository userRepository;
+    @Autowired private MailerService mailerService;
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
+    @Autowired private CloudinaryService cloudinaryService;
 
     // ================== SIGNUP ==================
 
@@ -39,39 +30,55 @@ public class SessionController {
     }
 
     @PostMapping("/register")
-    public String register(@ModelAttribute UserEntity user, Model model) {
-    	
-    	System.out.println("EMAIL = " + user.getEmail());
-    	
-        if (user.getEmail() == null || user.getEmail().trim().isEmpty()) {
+    public String register(
+            @RequestParam("firstName")  String firstName,
+            @RequestParam("lastName")   String lastName,
+            @RequestParam("email")      String email,
+            @RequestParam("password")   String password,
+            @RequestParam("gender")     String gender,
+            @RequestParam("contactNum") String contactNum,
+            @RequestParam("birthYear")  Integer birthYear,
+            @RequestParam(value = "profilePic", required = false) MultipartFile profilePic,
+            Model model) {
+
+        // Validate email
+        String cleanEmail = email.trim().toLowerCase();
+        if (cleanEmail.isEmpty()) {
             model.addAttribute("error", "Email is required");
             return "Signup";
         }
 
-        String email = user.getEmail().trim().toLowerCase();
-        user.setEmail(email);
-
-        if (userRepository.existsByEmail(email)) {
+        if (userRepository.existsByEmail(cleanEmail)) {
             model.addAttribute("error", "Email already registered");
             return "Signup";
         }
 
-        if (user.getRole() == null) {
-            user.setRole(UserEntity.Role.STUDENT);
+        // Build user
+        UserEntity user = new UserEntity();
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        user.setEmail(cleanEmail);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setGender(gender);
+        user.setContactNum(contactNum);
+        user.setBirthYear(birthYear);
+        user.setRole(UserEntity.Role.STUDENT);
+        user.setActive(true);
+
+        // Upload profile pic to Cloudinary if provided
+        if (profilePic != null && !profilePic.isEmpty()) {
+            try {
+                String picUrl = cloudinaryService.uploadProfilePic(profilePic);
+                user.setProfilePicURL(picUrl);
+            } catch (Exception e) {
+                // Don't block signup if upload fails — just skip pic
+                System.err.println("Cloudinary upload failed: " + e.getMessage());
+            }
         }
 
-        if (user.getActive() == null) {
-            user.setActive(true);
-        }
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-
-        // plain password for now (BCrypt later)
         userRepository.save(user);
-        
-        
         mailerService.sendWelcomeMail(user);
-      
+
         return "redirect:/login";
     }
 
@@ -82,12 +89,6 @@ public class SessionController {
         return "Login";
     }
 
-   
-    
-    // Authentication
-    
-    
-
     @PostMapping("/authenticate")
     public String authenticate(@RequestParam String email,
                                @RequestParam String password,
@@ -95,7 +96,6 @@ public class SessionController {
                                HttpSession session) {
 
         String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
-
         Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
 
         if (op.isEmpty()) {
@@ -105,16 +105,18 @@ public class SessionController {
 
         UserEntity dbUser = op.get();
 
-        if (dbUser.getActive() != null && dbUser.getActive() == false) {
+        if (dbUser.getActive() != null && !dbUser.getActive()) {
             model.addAttribute("invalid", "Account is inactive");
             return "Login";
         }
 
-        if (dbUser.getPassword() == null || !passwordEncoder.matches(password, dbUser.getPassword())) {
+        if (dbUser.getPassword() == null ||
+            !passwordEncoder.matches(password, dbUser.getPassword())) {
             model.addAttribute("invalid", "Invalid email or password");
             return "Login";
         }
 
+        // Store full user (with profilePicURL) in session
         session.setAttribute("user", dbUser);
 
         if (dbUser.getRole() == UserEntity.Role.ADMIN) {
@@ -125,52 +127,6 @@ public class SessionController {
             return "redirect:/student/dashboard";
         }
     }
-    
-   /* @PostMapping("/authenticate")
-    public String authenticate(@RequestParam String email,
-                               @RequestParam String password,
-                               Model model,
-                               HttpSession session) {
-
-        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
-
-        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
-
-        if (op.isPresent()) {
-            UserEntity dbUser = op.get();
-            
-         // CREATE ENCODER HERE
-            BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-
-            // MATCH PASSWORD
-            if (encoder.matches(password, dbUser.getPassword())) 
-
-            // optional: active check
-            if (dbUser.getActive() != null && dbUser.getActive() == false) {
-                model.addAttribute("invalid", "Account is inactive");
-                return "Login";
-            }
-
-            // password check
-            if (dbUser.getPassword() != null && dbUser.getPassword().equals(password)) {
-
-                // create session only after successful password check
-                session.setAttribute("user", dbUser);
-
-                // redirect by role (enum)
-                if (dbUser.getRole() == UserEntity.Role.ADMIN) {
-                    return "redirect:/admin/dashboard";
-                } else if (dbUser.getRole() == UserEntity.Role.EXAMINER) {
-                    return "redirect:/examiner/dashboard";
-                } else {
-                    return "redirect:/student/dashboard";
-                }
-            }
-        }
-
-        model.addAttribute("invalid", "Invalid email or password");
-        return "Login";
-    }*/
 
     // ================== FORGET PASSWORD ==================
 
@@ -179,94 +135,56 @@ public class SessionController {
         return "ForgetPassword";
     }
 
-
-
     @PostMapping("/resetPassword")
     public String resetPassword(@RequestParam String email,
                                 @RequestParam String newPassword,
                                 Model model) {
-
         String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
-
         Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
         if (op.isEmpty()) {
             model.addAttribute("error", "Email not found");
             return "ForgetPassword";
         }
-
         UserEntity user = op.get();
-
-        // IMPORTANT: encrypt new password
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
-
         return "redirect:/login";
     }
-    
-   /* @PostMapping("/resetPassword")
-    public String resetPassword(@RequestParam String email,
-                                @RequestParam String newPassword,
-                                Model model) {
 
-        String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
-
-        Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
-
-        if (op.isEmpty()) {
-            model.addAttribute("error", "Email not found");
-            return "ForgetPassword";
-        }
-
-        UserEntity user = op.get();
-        user.setPassword(newPassword); // BCrypt later
-        userRepository.save(user);
-
-        return "redirect:/login";
-    }*/
     @PostMapping("/sendOtp")
-    public String sendOtp(@RequestParam String email, Model model, HttpSession session) {
-
+    public String sendOtp(@RequestParam String email,
+                          Model model, HttpSession session) {
         String cleanEmail = (email == null) ? "" : email.trim().toLowerCase();
-
         Optional<UserEntity> op = userRepository.findByEmail(cleanEmail);
         if (op.isEmpty()) {
             model.addAttribute("error", "Email not found");
             return "ForgetPassword";
         }
-
         UserEntity user = op.get();
-
         String otp = String.valueOf((int)(Math.random() * 900000) + 100000);
-
         user.setOtp(otp);
         userRepository.save(user);
-
         session.setAttribute("otpEmail", cleanEmail);
         session.setAttribute("otpTime", System.currentTimeMillis());
-
         mailerService.sendOtpMail(user.getEmail(), user.getFirstName(), otp);
-
         model.addAttribute("msg", "OTP sent to your email");
         return "VerifyOtp";
     }
-    
-    
+
     @PostMapping("/verifyOtpAndReset")
     public String verifyOtpAndReset(@RequestParam String otp,
                                     @RequestParam String newPassword,
-                                    Model model,
-                                    HttpSession session) {
-
+                                    Model model, HttpSession session) {
         Object emailObj = session.getAttribute("otpEmail");
-        Object timeObj = session.getAttribute("otpTime");
+        Object timeObj  = session.getAttribute("otpTime");
 
         if (emailObj == null || timeObj == null) {
             model.addAttribute("error", "Session expired. Please try again.");
             return "ForgetPassword";
         }
 
-        String email = emailObj.toString();
-        long otpTime = (long) timeObj;
+        String email   = emailObj.toString();
+        long otpTime   = (long) timeObj;
 
         if (System.currentTimeMillis() - otpTime > 10 * 60 * 1000) {
             model.addAttribute("error", "OTP expired. Please request again.");
@@ -280,7 +198,6 @@ public class SessionController {
         }
 
         UserEntity user = op.get();
-
         if (user.getOtp() == null || !user.getOtp().equals(otp)) {
             model.addAttribute("error", "Invalid OTP");
             return "VerifyOtp";
@@ -289,14 +206,11 @@ public class SessionController {
         user.setPassword(passwordEncoder.encode(newPassword));
         user.setOtp(null);
         userRepository.save(user);
-
         session.removeAttribute("otpEmail");
         session.removeAttribute("otpTime");
-
         return "redirect:/login";
     }
-    
-    
+
     // ================== LOGOUT ==================
 
     @GetMapping("/logout")

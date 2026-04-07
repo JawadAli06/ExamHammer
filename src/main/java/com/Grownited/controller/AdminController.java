@@ -1,14 +1,18 @@
 package com.Grownited.controller;
 
 import com.Grownited.entity.DifficultyLevelEntity;
+import com.Grownited.entity.ExamAttemptEntity;
 import com.Grownited.entity.ExamEntity;
 import com.Grownited.entity.SubjectEntity;
 import com.Grownited.entity.UserEntity;
 import com.Grownited.repository.DifficultyLevelRepository;
+import com.Grownited.repository.ExamAttemptRepository;
 import com.Grownited.repository.ExamRepository;
 import com.Grownited.repository.SubjectRepository;
 import com.Grownited.repository.UserRepository;
 import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.format.annotation.DateTimeFormat;
 
 
@@ -26,6 +30,9 @@ public class AdminController {
     @Autowired private SubjectRepository subjectRepository;
     @Autowired private ExamRepository examRepository;
     @Autowired private DifficultyLevelRepository difficultyRepository;
+    @Autowired private ExamAttemptRepository examAttemptRepository;
+    
+    
     
     // ================= DASHBOARD =================
     
@@ -89,13 +96,31 @@ public class AdminController {
         return "admin/AddSubject";
     }
 
-    // ✅ IMPORTANT: mapping is "/subjects/save" (NOT "/admin/subjects/save")
     @PostMapping("/subjects/save")
+    public String saveSubject(@ModelAttribute SubjectEntity subject, HttpSession session) {
+        UserEntity admin = (UserEntity) session.getAttribute("user");
+
+        if (admin == null || admin.getRole() != UserEntity.Role.ADMIN) {
+            return "redirect:/login";
+        }
+
+        subject.setCreatedBy(admin);
+
+        if (subject.getActive() == null) {
+            subject.setActive(true);
+        }
+
+        subjectRepository.save(subject);
+        return "redirect:/admin/subjects";
+    }
+    
+    // ✅ IMPORTANT: mapping is "/subjects/save" (NOT "/admin/subjects/save")
+   /* @PostMapping("/subjects/save")
     public String saveSubject(@ModelAttribute SubjectEntity subject) {
         if (subject.getActive() == null) subject.setActive(true);
         subjectRepository.save(subject);
         return "redirect:/admin/subjects";
-    }
+    }*/
 
     @GetMapping("/subjects/edit/{id}")
     public String editSubject(@PathVariable Integer id, Model model) {
@@ -317,6 +342,12 @@ public class AdminController {
         return "redirect:/admin/exams";
     }
     
+    @GetMapping("/results")
+    public String allResults(Model model) {
+        List<ExamAttemptEntity> results = examAttemptRepository.findAll();
+        model.addAttribute("results", results);
+        return "admin/results";
+    }
     
  // ================= PROFILE =================
     @GetMapping("/profile")

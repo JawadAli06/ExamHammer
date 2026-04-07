@@ -1,247 +1,249 @@
 package com.Grownited.controller;
 
-import com.Grownited.entity.QuestionBankEntity;
-import com.Grownited.entity.UserEntity;
-import com.Grownited.repository.ExamRepository;
-import com.Grownited.repository.QuestionBankRepository;
-import com.Grownited.repository.SubjectRepository;
-import com.Grownited.entity.ExamEntity;
-import com.Grownited.entity.SubjectEntity;
-
-
+import com.Grownited.entity.*;
+import com.Grownited.repository.*;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Controller
 @RequestMapping("/examiner")
 public class ExaminerController {
 
-    @Autowired
-    private QuestionBankRepository questionBankRepository;
+    @Autowired private SubjectRepository subjectRepository;
+    @Autowired private ExamRepository examRepository;
+    @Autowired private ExamAttemptRepository examAttemptRepository;
+    @Autowired private ExamQuestionRepository examQuestionRepository;
+    @Autowired private DifficultyLevelRepository difficultyRepository;
+    @Autowired private QuestionBankRepository questionBankRepository;
 
-    @Autowired
-    private ExamRepository examRepository;
-    
-    @Autowired
-    private SubjectRepository subjectRepository;
-    
-    
+    private boolean isExaminer(HttpSession session) {
+        UserEntity user = (UserEntity) session.getAttribute("user");
+        return user != null && user.getRole() == UserEntity.Role.EXAMINER;
+    }
 
+    // =====================
+    // DASHBOARD
+    // =====================
     @GetMapping("/dashboard")
     public String dashboard(Model model, HttpSession session) {
+        if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
-        if (examiner == null) return "redirect:/login";
 
-        model.addAttribute("totalQuestions", questionBankRepository.count());
-        model.addAttribute("myExams", examRepository.findByCreatedBy(examiner).size());
+        long subjectCount = subjectRepository.countByActiveTrue();
+        long examCount    = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
+        long questionCount = examQuestionRepository.countByCreatedBy(examiner);
+        long resultCount  = examAttemptRepository.countByExamCreatedBy(examiner);
+
+        model.addAttribute("subjectCount",  subjectCount);
+        model.addAttribute("examCount",     examCount);
+        model.addAttribute("questionCount", questionCount);
+        model.addAttribute("resultCount",   resultCount);
 
         return "examiner/ExaminerDashboard";
     }
 
-    @GetMapping("/questions")
-    public String questionList(@RequestParam(required = false) Integer examId,
-                               Model model,
-                               HttpSession session) {
+    // =====================
+    // SUBJECTS
+    // =====================
+    @GetMapping("/subjects")
+    public String subjectList(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        model.addAttribute("subjects", subjectRepository.findByActiveTrue());
+        return "examiner/SubjectList";
+    }
 
+    @GetMapping("/addSubject")
+    public String addSubjectForm(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        model.addAttribute("subjects", subjectRepository.findByActiveTrue());
+        return "examiner/SubjectList";
+    }
+
+    @PostMapping("/saveSubject")
+    public String saveSubject(@ModelAttribute SubjectEntity subject, HttpSession session) {
+        if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
-        if (examiner == null) return "redirect:/login";
+        subject.setCreatedBy(examiner);
+        if (subject.getActive() == null) subject.setActive(true);
+        subjectRepository.save(subject);
+        return "redirect:/examiner/subjects";
+    }
 
-        if (examId != null) {
-            model.addAttribute("questions", questionBankRepository.findByExam_ExamId(examId));
-        } else {
-            model.addAttribute("questions", questionBankRepository.findAll());
+    // =====================
+    // EXAMS
+    // =====================
+    @GetMapping("/addExam")
+    public String addExam(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+        model.addAttribute("difficulties", difficultyRepository.findAll());
+        return "examiner/AddExam";
+    }
+
+    @PostMapping("/saveExam")
+    public String saveExam(@RequestParam("examTitle")    String examTitle,
+                           @RequestParam("subjectId")    Integer subjectId,
+                           @RequestParam("difficultyId") Integer difficultyId,
+                           @RequestParam("duration")     Integer duration,
+                           @RequestParam("totalMarks")   Integer totalMarks,
+                           @RequestParam("status")       String status,
+                           HttpSession session, Model model) {
+
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+
+        SubjectEntity subject = subjectRepository.findById(subjectId).orElse(null);
+        DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId).orElse(null);
+
+        if (subject == null || difficulty == null) {
+            model.addAttribute("error", "Invalid subject or difficulty.");
+            model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+            model.addAttribute("difficulties", difficultyRepository.findAll());
+            return "examiner/AddExam";
         }
 
-        model.addAttribute("selectedExamId", examId);
-        return "examiner/QuestionList";
+        ExamEntity exam = new ExamEntity();
+        exam.setExamName(examTitle);
+        exam.setSubject(subject);
+        exam.setSubjectName(subject.getSubjectName());
+        exam.setDifficulty(difficulty);
+        exam.setDurationMinutes(duration);
+        exam.setTotalMarks(totalMarks);
+        exam.setTotalQuestions(0);
+        exam.setExamType(ExamEntity.ExamType.SCHOOL);
+        exam.setStatus(ExamEntity.Status.valueOf(status.toUpperCase()));
+        exam.setCreatedBy(examiner);
+        examRepository.save(exam);
+
+        return "redirect:/examiner/myExams";
     }
-    
-   
-   // @GetMapping("/questions")
-   // public String questionList(Model model) {
-     //   model.addAttribute("questions", questionBankRepository.findAll());
-     //   return "examiner/QuestionList";
-   // }
-    
+
+    // Widget 2 click → ALL active exams
+    @GetMapping("/exams")
+    public String allExams(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        model.addAttribute("exams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
+        model.addAttribute("pageTitle", "All Active Exams");
+        return "examiner/MyExams";
+    }
+
+    // Sidebar → only this examiner's exams
+    @GetMapping("/myExams")
+    public String myExams(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+        model.addAttribute("exams", examRepository.findByCreatedBy(examiner));
+        model.addAttribute("pageTitle", "My Exams");
+        return "examiner/MyExams";
+    }
+
+    // =====================
+    // QUESTIONS
+    // =====================
+    @GetMapping("/questions")
+    public String manageQuestions(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+        model.addAttribute("questions", examQuestionRepository.findByCreatedBy(examiner));
+        return "examiner/ManageQuestions";
+    }
+
     @GetMapping("/addQuestion")
-    public String addQuestionPage(@RequestParam(required = false) Integer examId, Model model) {
-        model.addAttribute("exams", examRepository.findAll());
-        model.addAttribute("subjects", subjectRepository.findAll());
-        model.addAttribute("selectedExamId", examId);
+    public String addQuestionForm(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+
+        List<ExamEntity> exams = examRepository.findByCreatedBy(examiner);
+        // if examiner has no exams yet, show all active exams
+        if (exams == null || exams.isEmpty()) {
+            exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
+        }
+        model.addAttribute("exams",        exams);
+        model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+        model.addAttribute("difficulties", difficultyRepository.findAll());
         return "examiner/AddQuestion";
     }
-    
-   // @GetMapping("/addQuestion")
-    //public String addQuestionPage(Model model) {
-      //  model.addAttribute("exams", examRepository.findAll());
-        //model.addAttribute("subjects", subjectRepository.findAll());
-        //return "examiner/AddQuestion";
-    //}
-
-   // @GetMapping("/addQuestion")
-    //public String addQuestionPage() {
-       // return "examiner/AddQuestion";
-   // }
 
     @PostMapping("/saveQuestion")
-    public String saveQuestion(@RequestParam Integer examId,
-                               @RequestParam Integer subjectId,
-                               @RequestParam String questionText,
-                               @RequestParam String optionA,
-                               @RequestParam String optionB,
-                               @RequestParam String optionC,
-                               @RequestParam String optionD,
-                               @RequestParam String correctOption,
-                               @RequestParam Integer marks,
-                               Model model,
-                               HttpSession session) {
+    public String saveQuestion(@RequestParam("examId")        Integer examId,
+                               @RequestParam("subjectId")     Integer subjectId,
+                               @RequestParam("difficultyId")  Integer difficultyId,
+                               @RequestParam("questionText")  String questionText,
+                               @RequestParam("optionA")       String optionA,
+                               @RequestParam("optionB")       String optionB,
+                               @RequestParam("optionC")       String optionC,
+                               @RequestParam("optionD")       String optionD,
+                               @RequestParam("correctOption") String correctOption,
+                               @RequestParam("marks")         Integer marks,
+                               HttpSession session, Model model) {
 
+        if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
-        if (examiner == null) return "redirect:/login";
 
         ExamEntity exam = examRepository.findById(examId).orElse(null);
-        var subject = subjectRepository.findById(subjectId).orElse(null);
+        SubjectEntity subject = subjectRepository.findById(subjectId).orElse(null);
+        DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId).orElse(null);
 
-        if (exam == null || subject == null) {
-            model.addAttribute("error", "Please select valid exam and subject.");
-            model.addAttribute("exams", examRepository.findByCreatedBy(examiner));
-            model.addAttribute("subjects", subjectRepository.findAll());
+        if (exam == null || subject == null || difficulty == null) {
+            model.addAttribute("error", "Please select valid exam, subject and difficulty.");
+            List<ExamEntity> exams = examRepository.findByCreatedBy(examiner);
+            if (exams == null || exams.isEmpty())
+                exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
+            model.addAttribute("exams",        exams);
+            model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+            model.addAttribute("difficulties", difficultyRepository.findAll());
             return "examiner/AddQuestion";
         }
 
-        // protection: examiner should only add to own exams
-        if (exam.getCreatedBy() == null || !exam.getCreatedBy().getUserId().equals(examiner.getUserId())) {
-            return "redirect:/login";
-        }
+        // Save to QuestionBankEntity — subject & difficulty are NOT NULL so must be set
+        QuestionBankEntity qb = new QuestionBankEntity();
+        qb.setQuestionText(questionText);
+        qb.setOptionA(optionA);
+        qb.setOptionB(optionB);
+        qb.setOptionC(optionC);
+        qb.setOptionD(optionD);
+        qb.setCorrectOption(correctOption);
+        qb.setMarks(marks);
+        qb.setSubject(subject);        // NOT NULL — must set
+        qb.setDifficulty(difficulty);  // NOT NULL — must set
+        qb.setExam(exam);
+        qb.setCreatedBy(examiner);
+        questionBankRepository.save(qb);
 
-        var q = new com.Grownited.entity.QuestionBankEntity();
-        q.setExam(exam);
-        q.setSubject(subject);
-        q.setQuestionText(questionText);
-        q.setOptionA(optionA);
-        q.setOptionB(optionB);
-        q.setOptionC(optionC);
-        q.setOptionD(optionD);
-        q.setCorrectOption(correctOption);
-        q.setMarks(marks);
+        // Link in ExamQuestionEntity
+        ExamQuestionEntity eq = new ExamQuestionEntity();
+        eq.setExam(exam);
+        eq.setQuestion(qb);
+        eq.setCreatedBy(examiner);
+        examQuestionRepository.save(eq);
 
-        questionBankRepository.save(q);
+        // Update exam's total question count
+        exam.setTotalQuestions(examQuestionRepository.findByExam_ExamId(examId).size());
+        examRepository.save(exam);
 
-        return "redirect:/examiner/questions?examId=" + examId;
-    }
-    
-    
-  /*  @PostMapping("/saveQuestion")
-    public String saveQuestion(@RequestParam String questionText,
-                               @RequestParam Integer marks) {
-
-        QuestionBankEntity q = new QuestionBankEntity();
-        q.setQuestionText(questionText);
-        q.setMarks(marks);
-
-        questionBankRepository.save(q);
         return "redirect:/examiner/questions";
     }
 
-    public QuestionBankRepository getQuestionBankRepository() {
-		return questionBankRepository;
-	}
-
-	public void setQuestionBankRepository(QuestionBankRepository questionBankRepository) {
-		this.questionBankRepository = questionBankRepository;
-	}
-
-	public ExamRepository getExamRepository() {
-		return examRepository;
-	}
-
-	public void setExamRepository(ExamRepository examRepository) {
-		this.examRepository = examRepository;
-	}*/
-
-    @GetMapping("/questions/edit/{id}")
-    public String editQuestionPage(@PathVariable Integer id, Model model, HttpSession session) {
-        UserEntity examiner = (UserEntity) session.getAttribute("user");
-        if (examiner == null) return "redirect:/login";
-
-        var q = questionBankRepository.findById(id).orElse(null);
-        if (q == null) return "redirect:/examiner/questions";
-
-        model.addAttribute("question", q);
-        model.addAttribute("exams", examRepository.findByCreatedBy(examiner));
-        model.addAttribute("subjects", subjectRepository.findAll());
-        return "examiner/EditQuestion";
-    }
-    
-    
-    @PostMapping("/questions/update")
-    public String updateQuestion(@RequestParam Integer questionId,
-                                 @RequestParam Integer examId,
-                                 @RequestParam Integer subjectId,
-                                 @RequestParam String questionText,
-                                 @RequestParam String optionA,
-                                 @RequestParam String optionB,
-                                 @RequestParam String optionC,
-                                 @RequestParam String optionD,
-                                 @RequestParam String correctOption,
-                                 @RequestParam Integer marks,
-                                 HttpSession session,
-                                 Model model) {
-
-        UserEntity examiner = (UserEntity) session.getAttribute("user");
-        if (examiner == null) return "redirect:/login";
-
-        var q = questionBankRepository.findById(questionId).orElse(null);
-        var exam = examRepository.findById(examId).orElse(null);
-        var subject = subjectRepository.findById(subjectId).orElse(null);
-
-        if (q == null || exam == null || subject == null) {
-            return "redirect:/examiner/questions";
-        }
-
-        q.setExam(exam);
-        q.setSubject(subject);
-        q.setQuestionText(questionText);
-        q.setOptionA(optionA);
-        q.setOptionB(optionB);
-        q.setOptionC(optionC);
-        q.setOptionD(optionD);
-        q.setCorrectOption(correctOption);
-        q.setMarks(marks);
-
-        questionBankRepository.save(q);
-
-        return "redirect:/examiner/questions?examId=" + examId;
-    }
-    
-    
-	@GetMapping("/deleteQuestion/{id}")
-    public String deleteQuestion(@PathVariable Integer id) {
-        questionBankRepository.deleteById(id);
+    @GetMapping("/deleteQuestion/{id}")
+    public String deleteQuestion(@PathVariable Integer id, HttpSession session) {
+        if (!isExaminer(session)) return "redirect:/login";
+        examQuestionRepository.deleteById(id);
         return "redirect:/examiner/questions";
     }
 
-	@GetMapping("/exams")
-	public String examinerExams(Model model, HttpSession session) {
-	    UserEntity examiner = (UserEntity) session.getAttribute("user");
-	    if (examiner == null) return "redirect:/login";
-
-	    model.addAttribute("exams", examRepository.findAll());
-	   // model.addAttribute("exams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
-	    return "examiner/ExamList";
-	}
-
-    @GetMapping("/profile")
-    public String profilePage() {
-        return "examiner/Profile";
+    // =====================
+    // RESULTS
+    // =====================
+    @GetMapping("/results")
+    public String results(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+        model.addAttribute("results", examAttemptRepository.findByExamCreatedBy(examiner));
+        return "examiner/Results";
     }
-
-    @GetMapping("/changePassword")
-    public String changePasswordPage() {
-        return "examiner/ChangePassword";
-    }
-    
 }

@@ -56,7 +56,7 @@
       </div>
 
       <div class="mb-3">
-        <label class="form-label">Correct Answer</label>
+        <label class="form-label">Correct Option</label>
         <select name="correctAnswer" class="form-control" required>
           <option value="A" ${question.correctAnswer == 'A' ? 'selected' : ''}>Option A</option>
           <option value="B" ${question.correctAnswer == 'B' ? 'selected' : ''}>Option B</option>

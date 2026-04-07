@@ -14,6 +14,10 @@ public class ExamAttemptEntity {
     @ManyToOne
     @JoinColumn(name = "exam_id", nullable = false)
     private ExamEntity exam;
+    
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private UserEntity createdBy;
 
     @ManyToOne
     @JoinColumn(name = "student_id", nullable = false)
@@ -114,5 +118,15 @@ public class ExamAttemptEntity {
     public void setStatus(Status status) {
         this.status = status;
     }
+
+	public UserEntity getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(UserEntity createdBy) {
+		this.createdBy = createdBy;
+	}
+    
 }
+
 

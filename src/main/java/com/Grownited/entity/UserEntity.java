@@ -29,8 +29,11 @@ public class UserEntity {
     private String profilePicURL;
     private String otp;
     private Boolean active;
+   
+    
+    
 
-    public enum Role {
+	public enum Role {
         ADMIN, EXAMINER, STUDENT
     }
 
