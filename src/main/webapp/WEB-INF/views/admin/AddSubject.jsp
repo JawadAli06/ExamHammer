@@ -2,7 +2,7 @@
 
 <div class="container mt-4">
     <h3>Add Subject</h3>
-
+<a href="${pageContext.request.contextPath}/admin/subjects" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Subjects</a>
     <form action="${pageContext.request.contextPath}/admin/subjects/save" method="post">
 
         <input type="hidden" name="subjectId" value="${subject.subjectId}" />

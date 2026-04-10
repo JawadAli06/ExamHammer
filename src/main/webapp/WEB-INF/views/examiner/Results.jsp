@@ -58,7 +58,7 @@
     </style>
 </head>
 <body>
-
+<a href="${pageContext.request.contextPath}/examiner/dashboard" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
 <h2>Examiner Results</h2>
 
 <c:if test="${empty results}">

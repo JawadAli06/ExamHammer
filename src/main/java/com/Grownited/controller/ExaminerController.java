@@ -2,11 +2,14 @@ package com.Grownited.controller;
 
 import com.Grownited.entity.*;
 import com.Grownited.repository.*;
+import com.Grownited.service.CloudinaryService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -20,6 +23,9 @@ public class ExaminerController {
     @Autowired private ExamQuestionRepository examQuestionRepository;
     @Autowired private DifficultyLevelRepository difficultyRepository;
     @Autowired private QuestionBankRepository questionBankRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private CloudinaryService cloudinaryService;
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
 
     private boolean isExaminer(HttpSession session) {
         UserEntity user = (UserEntity) session.getAttribute("user");
@@ -35,14 +41,14 @@ public class ExaminerController {
         UserEntity examiner = (UserEntity) session.getAttribute("user");
 
         long subjectCount = subjectRepository.countByActiveTrue();
-        long examCount    = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
+        long examCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
         long questionCount = examQuestionRepository.countByCreatedBy(examiner);
-        long resultCount  = examAttemptRepository.countByExamCreatedBy(examiner);
+        long resultCount = examAttemptRepository.countByExamCreatedBy(examiner);
 
-        model.addAttribute("subjectCount",  subjectCount);
-        model.addAttribute("examCount",     examCount);
+        model.addAttribute("subjectCount", subjectCount);
+        model.addAttribute("examCount", examCount);
         model.addAttribute("questionCount", questionCount);
-        model.addAttribute("resultCount",   resultCount);
+        model.addAttribute("resultCount", resultCount);
 
         return "examiner/ExaminerDashboard";
     }
@@ -80,18 +86,18 @@ public class ExaminerController {
     @GetMapping("/addExam")
     public String addExam(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
-        model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+        model.addAttribute("subjects", subjectRepository.findByActiveTrue());
         model.addAttribute("difficulties", difficultyRepository.findAll());
         return "examiner/AddExam";
     }
 
     @PostMapping("/saveExam")
-    public String saveExam(@RequestParam("examTitle")    String examTitle,
-                           @RequestParam("subjectId")    Integer subjectId,
+    public String saveExam(@RequestParam("examTitle") String examTitle,
+                           @RequestParam("subjectId") Integer subjectId,
                            @RequestParam("difficultyId") Integer difficultyId,
-                           @RequestParam("duration")     Integer duration,
-                           @RequestParam("totalMarks")   Integer totalMarks,
-                           @RequestParam("status")       String status,
+                           @RequestParam("duration") Integer duration,
+                           @RequestParam("totalMarks") Integer totalMarks,
+                           @RequestParam("status") String status,
                            HttpSession session, Model model) {
 
         if (!isExaminer(session)) return "redirect:/login";
@@ -102,7 +108,7 @@ public class ExaminerController {
 
         if (subject == null || difficulty == null) {
             model.addAttribute("error", "Invalid subject or difficulty.");
-            model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+            model.addAttribute("subjects", subjectRepository.findByActiveTrue());
             model.addAttribute("difficulties", difficultyRepository.findAll());
             return "examiner/AddExam";
         }
@@ -123,7 +129,6 @@ public class ExaminerController {
         return "redirect:/examiner/myExams";
     }
 
-    // Widget 2 click → ALL active exams
     @GetMapping("/exams")
     public String allExams(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
@@ -132,7 +137,6 @@ public class ExaminerController {
         return "examiner/MyExams";
     }
 
-    // Sidebar → only this examiner's exams
     @GetMapping("/myExams")
     public String myExams(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
@@ -145,42 +149,94 @@ public class ExaminerController {
     // =====================
     // QUESTIONS
     // =====================
-    @GetMapping("/questions")
-    public String manageQuestions(HttpSession session, Model model) {
-        if (!isExaminer(session)) return "redirect:/login";
-        UserEntity examiner = (UserEntity) session.getAttribute("user");
-        model.addAttribute("questions", examQuestionRepository.findByCreatedBy(examiner));
-        return "examiner/ManageQuestions";
-    }
-
     @GetMapping("/addQuestion")
-    public String addQuestionForm(HttpSession session, Model model) {
+    public String addQuestionPage(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
 
-        List<ExamEntity> exams = examRepository.findByCreatedBy(examiner);
-        // if examiner has no exams yet, show all active exams
-        if (exams == null || exams.isEmpty()) {
-            exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
-        }
-        model.addAttribute("exams",        exams);
-        model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+        List<ExamEntity> allActiveExams = examRepository
+                .findByStatus(ExamEntity.Status.ACTIVE);
+
+       // List<ExamEntity> exams = examRepository.findByCreatedBy(examiner);
+       // if (exams == null || exams.isEmpty()) {
+        //    exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
+      //  }
+
+        model.addAttribute("exams", allActiveExams);
+        model.addAttribute("subjects", subjectRepository.findByActiveTrue());
         model.addAttribute("difficulties", difficultyRepository.findAll());
         return "examiner/AddQuestion";
     }
 
+  /*  @GetMapping("/questions")
+    public String manageQuestions(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+        
+        List<ExamQuestionEntity> questions =
+                examQuestionRepository.findByCreatedBy(examiner);
+
+        model.addAttribute("questions", questions);
+        
+     //   model.addAttribute("questions", examQuestionRepository.findByCreatedBy(examiner));
+        return "examiner/ManageQuestions";
+    }*/
+
+ // =========================
+ // QUESTIONS - EXAM LIST VIEW
+ // =========================
+ @GetMapping("/questions")
+ public String manageQuestions(HttpSession session, Model model) {
+     if (!isExaminer(session)) return "redirect:/login";
+     UserEntity examiner = (UserEntity) session.getAttribute("user");
+
+     // Show ALL active exams — admin + examiner created
+     List<ExamEntity> allExams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
+
+     // For each exam, count how many questions exist
+     java.util.Map<Integer, Long> questionCountMap = new java.util.LinkedHashMap<>();
+     for (ExamEntity exam : allExams) {
+         long count = examQuestionRepository.findByExam_ExamId(exam.getExamId()).size();
+         questionCountMap.put(exam.getExamId(), count);
+     }
+
+     model.addAttribute("exams", allExams);
+     model.addAttribute("questionCountMap", questionCountMap);
+     return "examiner/ManageQuestions";
+ }
+
+ // =========================
+ // QUESTIONS - BY EXAM
+ // =========================
+ @GetMapping("/questions/exam/{examId}")
+ public String questionsByExam(@PathVariable Integer examId,
+                                HttpSession session, Model model) {
+     if (!isExaminer(session)) return "redirect:/login";
+
+     ExamEntity exam = examRepository.findById(examId).orElse(null);
+     if (exam == null) return "redirect:/examiner/questions";
+
+     List<ExamQuestionEntity> questions =
+             examQuestionRepository.findByExam_ExamId(examId);
+
+     model.addAttribute("exam",      exam);
+     model.addAttribute("questions", questions);
+     return "examiner/QuestionsByExam";
+ }
+    
     @PostMapping("/saveQuestion")
-    public String saveQuestion(@RequestParam("examId")        Integer examId,
-                               @RequestParam("subjectId")     Integer subjectId,
-                               @RequestParam("difficultyId")  Integer difficultyId,
-                               @RequestParam("questionText")  String questionText,
-                               @RequestParam("optionA")       String optionA,
-                               @RequestParam("optionB")       String optionB,
-                               @RequestParam("optionC")       String optionC,
-                               @RequestParam("optionD")       String optionD,
-                               @RequestParam("correctOption") String correctOption,
-                               @RequestParam("marks")         Integer marks,
-                               HttpSession session, Model model) {
+    public String saveQuestion(@RequestParam Integer examId,
+                               @RequestParam Integer subjectId,
+                               @RequestParam Integer difficultyId,
+                               @RequestParam String questionText,
+                               @RequestParam String optionA,
+                               @RequestParam String optionB,
+                               @RequestParam String optionC,
+                               @RequestParam String optionD,
+                               @RequestParam String correctOption,
+                               @RequestParam Integer marks,
+                               HttpSession session,
+                               Model model) {
 
         if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
@@ -192,15 +248,13 @@ public class ExaminerController {
         if (exam == null || subject == null || difficulty == null) {
             model.addAttribute("error", "Please select valid exam, subject and difficulty.");
             List<ExamEntity> exams = examRepository.findByCreatedBy(examiner);
-            if (exams == null || exams.isEmpty())
-                exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
-            model.addAttribute("exams",        exams);
-            model.addAttribute("subjects",     subjectRepository.findByActiveTrue());
+            if (exams == null || exams.isEmpty()) exams = examRepository.findByStatus(ExamEntity.Status.ACTIVE);
+            model.addAttribute("exams", exams);
+            model.addAttribute("subjects", subjectRepository.findByActiveTrue());
             model.addAttribute("difficulties", difficultyRepository.findAll());
             return "examiner/AddQuestion";
         }
 
-        // Save to QuestionBankEntity — subject & difficulty are NOT NULL so must be set
         QuestionBankEntity qb = new QuestionBankEntity();
         qb.setQuestionText(questionText);
         qb.setOptionA(optionA);
@@ -209,20 +263,18 @@ public class ExaminerController {
         qb.setOptionD(optionD);
         qb.setCorrectOption(correctOption);
         qb.setMarks(marks);
-        qb.setSubject(subject);        // NOT NULL — must set
-        qb.setDifficulty(difficulty);  // NOT NULL — must set
+        qb.setSubject(subject);
+        qb.setDifficulty(difficulty);
         qb.setExam(exam);
         qb.setCreatedBy(examiner);
         questionBankRepository.save(qb);
 
-        // Link in ExamQuestionEntity
         ExamQuestionEntity eq = new ExamQuestionEntity();
         eq.setExam(exam);
         eq.setQuestion(qb);
         eq.setCreatedBy(examiner);
         examQuestionRepository.save(eq);
 
-        // Update exam's total question count
         exam.setTotalQuestions(examQuestionRepository.findByExam_ExamId(examId).size());
         examRepository.save(exam);
 
@@ -245,5 +297,97 @@ public class ExaminerController {
         UserEntity examiner = (UserEntity) session.getAttribute("user");
         model.addAttribute("results", examAttemptRepository.findByExamCreatedBy(examiner));
         return "examiner/Results";
+    }
+
+    // =====================
+    // PROFILE
+    // =====================
+    @GetMapping("/profile")
+    public String profile(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        model.addAttribute("userData", dbUser);
+        return "examiner/Profile";
+    }
+
+    @PostMapping("/updateProfile")
+    public String updateProfile(@RequestParam String firstName,
+                                @RequestParam String lastName,
+                                @RequestParam(required = false) String gender,
+                                @RequestParam(required = false) String contactNum,
+                                @RequestParam(required = false) Integer birthYear,
+                                @RequestParam(value = "profilePic", required = false) MultipartFile profilePic,
+                                HttpSession session,
+                                Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        dbUser.setFirstName(firstName);
+        dbUser.setLastName(lastName);
+        dbUser.setGender(gender);
+        dbUser.setContactNum(contactNum);
+        dbUser.setBirthYear(birthYear);
+
+        if (profilePic != null && !profilePic.isEmpty()) {
+            try {
+                String picUrl = cloudinaryService.uploadProfilePic(profilePic);
+                dbUser.setProfilePicURL(picUrl);
+            } catch (Exception e) {
+                model.addAttribute("error", "Profile picture upload failed.");
+            }
+        }
+
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Profile updated successfully.");
+        model.addAttribute("userData", dbUser);
+        return "examiner/Profile";
+    }
+
+    // =====================
+    // CHANGE PASSWORD
+    // =====================
+    @GetMapping("/changePassword")
+    public String changePasswordPage(HttpSession session) {
+        if (!isExaminer(session)) return "redirect:/login";
+        return "examiner/ChangePassword";
+    }
+
+    @PostMapping("/updatePassword")
+    public String updatePassword(@RequestParam String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 HttpSession session,
+                                 Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        if (!passwordEncoder.matches(currentPassword, dbUser.getPassword())) {
+            model.addAttribute("error", "Current password is incorrect.");
+            return "examiner/ChangePassword";
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            model.addAttribute("error", "New password and confirm password do not match.");
+            return "examiner/ChangePassword";
+        }
+
+        dbUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Password changed successfully.");
+        return "examiner/ChangePassword";
     }
 }

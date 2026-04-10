@@ -3,6 +3,7 @@
 
 <div class="card border-0 shadow-sm rounded-4">
   <div class="card-body">
+  <a href="${pageContext.request.contextPath}/student/dashboard" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
     <h3 class="mb-3">Available Exams</h3>
 
     <div class="table-responsive">

@@ -8,6 +8,7 @@
 <hr>
 
 <a href="${pageContext.request.contextPath}/admin/exams/add" class="btn btn-primary mb-3">Add Exam</a>
+<a href="${pageContext.request.contextPath}/admin/dashboard" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
 
 <table class="table table-bordered">
     <thead>

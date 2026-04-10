@@ -8,12 +8,16 @@ import com.Grownited.entity.UserEntity;
 import com.Grownited.repository.ExamAttemptRepository;
 import com.Grownited.repository.ExamQuestionRepository;
 import com.Grownited.repository.ExamRepository;
+import com.Grownited.repository.UserRepository;
+import com.Grownited.service.CloudinaryService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -24,8 +28,10 @@ public class StudentController {
     @Autowired private ExamRepository examRepository;
     @Autowired private ExamQuestionRepository examQuestionRepository;
     @Autowired private ExamAttemptRepository examAttemptRepository;
+    @Autowired private UserRepository userRepository;
+    @Autowired private CloudinaryService cloudinaryService;
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
 
-    // helper
     private boolean isStudent(HttpSession session) {
         UserEntity user = (UserEntity) session.getAttribute("user");
         return user != null && user.getRole() == UserEntity.Role.STUDENT;
@@ -40,13 +46,11 @@ public class StudentController {
         UserEntity student = (UserEntity) session.getAttribute("user");
 
         long activeExamsCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
-
-        // FIXED: use findByStudent(student) — not findByStudentUserId
         long resultCount = examAttemptRepository.countByStudent(student);
 
-        model.addAttribute("activeExams",      examRepository.findByStatus(ExamEntity.Status.ACTIVE));
+        model.addAttribute("activeExams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
         model.addAttribute("activeExamsCount", activeExamsCount);
-        model.addAttribute("resultCount",      resultCount);
+        model.addAttribute("resultCount", resultCount);
 
         return "student/StudentDashboard";
     }
@@ -65,8 +69,7 @@ public class StudentController {
     // EXAM DETAILS
     // =========================
     @GetMapping("/exam/{id}")
-    public String examDetails(@PathVariable Integer id,
-                              Model model, HttpSession session) {
+    public String examDetails(@PathVariable Integer id, Model model, HttpSession session) {
         if (!isStudent(session)) return "redirect:/login";
 
         ExamEntity exam = examRepository.findById(id).orElse(null);
@@ -80,16 +83,14 @@ public class StudentController {
     // START EXAM
     // =========================
     @GetMapping("/startExam/{id}")
-    public String startExam(@PathVariable Integer id,
-                            Model model, HttpSession session) {
+    public String startExam(@PathVariable Integer id, Model model, HttpSession session) {
         if (!isStudent(session)) return "redirect:/login";
 
         ExamEntity exam = examRepository.findById(id).orElse(null);
         if (exam == null) return "redirect:/student/exams";
 
         model.addAttribute("exam", exam);
-        model.addAttribute("examQuestions",
-                examQuestionRepository.findByExam_ExamId(id));
+        model.addAttribute("examQuestions", examQuestionRepository.findByExam_ExamId(id));
 
         return "student/StartExam";
     }
@@ -108,15 +109,14 @@ public class StudentController {
         ExamEntity exam = examRepository.findById(examId).orElse(null);
         if (exam == null) return "redirect:/student/exams";
 
-        List<ExamQuestionEntity> examQuestions =
-                examQuestionRepository.findByExam_ExamId(examId);
+        List<ExamQuestionEntity> examQuestions = examQuestionRepository.findByExam_ExamId(examId);
 
         int totalQuestions = examQuestions.size();
         int correctAnswers = 0;
-        int wrongAnswers   = 0;
-        int unanswered     = 0;
+        int wrongAnswers = 0;
+        int unanswered = 0;
         double marksObtained = 0.0;
-        double totalMarks    = 0.0;
+        double totalMarks = 0.0;
 
         for (ExamQuestionEntity eq : examQuestions) {
             QuestionBankEntity q = eq.getQuestion();
@@ -126,7 +126,7 @@ public class StudentController {
             totalMarks += qMarks;
 
             String selected = request.getParameter("answer_" + q.getQuestionId());
-            String correct  = q.getCorrectOption();
+            String correct = q.getCorrectOption();
 
             if (selected == null || selected.isBlank()) {
                 unanswered++;
@@ -146,10 +146,8 @@ public class StudentController {
                 : 0.0;
         marksObtained = Math.round(marksObtained * 100.0) / 100.0;
 
-        boolean passed = exam.getPassingScore() != null
-                && marksObtained >= exam.getPassingScore();
+        boolean passed = exam.getPassingScore() != null && marksObtained >= exam.getPassingScore();
 
-        // Save attempt
         ExamAttemptEntity attempt = new ExamAttemptEntity();
         attempt.setExam(exam);
         attempt.setStudent(student);
@@ -159,21 +157,19 @@ public class StudentController {
         attempt.setTotalScore(marksObtained);
         attempt.setPercentage(percentage);
         attempt.setStatus(ExamAttemptEntity.Status.COMPLETED);
-        attempt.setResult(passed
-                ? ExamAttemptEntity.Result.PASS
-                : ExamAttemptEntity.Result.FAIL);
+        attempt.setResult(passed ? ExamAttemptEntity.Result.PASS : ExamAttemptEntity.Result.FAIL);
         examAttemptRepository.save(attempt);
 
-        model.addAttribute("exam",           exam);
-        model.addAttribute("student",        student);
+        model.addAttribute("exam", exam);
+        model.addAttribute("student", student);
         model.addAttribute("totalQuestions", totalQuestions);
         model.addAttribute("correctAnswers", correctAnswers);
-        model.addAttribute("wrongAnswers",   wrongAnswers);
-        model.addAttribute("unanswered",     unanswered);
-        model.addAttribute("marksObtained",  marksObtained);
-        model.addAttribute("totalMarks",     totalMarks);
-        model.addAttribute("percentage",     percentage);
-        model.addAttribute("passed",         passed);
+        model.addAttribute("wrongAnswers", wrongAnswers);
+        model.addAttribute("unanswered", unanswered);
+        model.addAttribute("marksObtained", marksObtained);
+        model.addAttribute("totalMarks", totalMarks);
+        model.addAttribute("percentage", percentage);
+        model.addAttribute("passed", passed);
 
         return "student/ExamResult";
     }
@@ -186,11 +182,101 @@ public class StudentController {
         if (!isStudent(session)) return "redirect:/login";
         UserEntity student = (UserEntity) session.getAttribute("user");
 
-        // FIXED: findByStudent(student) — correct method name
-        List<ExamAttemptEntity> results =
-                examAttemptRepository.findByStudent(student);
+        List<ExamAttemptEntity> results = examAttemptRepository.findByStudent(student);
 
         model.addAttribute("results", results);
         return "student/Results";
+    }
+
+    // =========================
+    // PROFILE
+    // =========================
+    @GetMapping("/profile")
+    public String profile(HttpSession session, Model model) {
+        if (!isStudent(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        model.addAttribute("userData", dbUser);
+        return "student/Profile";
+    }
+
+    @PostMapping("/updateProfile")
+    public String updateProfile(@RequestParam String firstName,
+                                @RequestParam String lastName,
+                                @RequestParam(required = false) String gender,
+                                @RequestParam(required = false) String contactNum,
+                                @RequestParam(required = false) Integer birthYear,
+                                @RequestParam(value = "profilePic", required = false) MultipartFile profilePic,
+                                HttpSession session,
+                                Model model) {
+        if (!isStudent(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        dbUser.setFirstName(firstName);
+        dbUser.setLastName(lastName);
+        dbUser.setGender(gender);
+        dbUser.setContactNum(contactNum);
+        dbUser.setBirthYear(birthYear);
+
+        if (profilePic != null && !profilePic.isEmpty()) {
+            try {
+                String picUrl = cloudinaryService.uploadProfilePic(profilePic);
+                dbUser.setProfilePicURL(picUrl);
+            } catch (Exception e) {
+                model.addAttribute("error", "Profile picture upload failed.");
+            }
+        }
+
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Profile updated successfully.");
+        model.addAttribute("userData", dbUser);
+        return "student/Profile";
+    }
+
+    // =========================
+    // CHANGE PASSWORD
+    // =========================
+    @GetMapping("/changePassword")
+    public String changePasswordPage(HttpSession session) {
+        if (!isStudent(session)) return "redirect:/login";
+        return "student/ChangePassword";
+    }
+
+    @PostMapping("/updatePassword")
+    public String updatePassword(@RequestParam String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 HttpSession session,
+                                 Model model) {
+        if (!isStudent(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        if (!passwordEncoder.matches(currentPassword, dbUser.getPassword())) {
+            model.addAttribute("error", "Current password is incorrect.");
+            return "student/ChangePassword";
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            model.addAttribute("error", "New password and confirm password do not match.");
+            return "student/ChangePassword";
+        }
+
+        dbUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Password changed successfully.");
+        return "student/ChangePassword";
     }
 }

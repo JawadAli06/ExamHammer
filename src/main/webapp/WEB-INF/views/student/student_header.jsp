@@ -23,6 +23,13 @@
     border-radius:10px; margin:2px 10px;
   }
   #sidebar a:hover { background:#495057; }
+  .sidebar-section-label {
+    font-size:11px; font-weight:600;
+    letter-spacing:.6px; text-transform:uppercase;
+    color:rgba(255,255,255,.4);
+    padding:10px 24px 4px;
+    margin-top:4px;
+  }
   #mainContent{
     flex:1; width:100%; margin-left:var(--sidebar-w);
     padding:16px 18px; transition:margin-left .25s ease;
@@ -35,6 +42,11 @@
   .avatar{
     width:38px; height:38px; border-radius:50%;
     object-fit:cover; border:2px solid #e9ecef;
+  }
+  .sidebar-avatar{
+    width:70px; height:70px; border-radius:50%;
+    object-fit:cover;
+    border:3px solid rgba(255,255,255,0.3);
   }
   #sidebarOverlay{
     position:fixed; inset:0; background:rgba(0,0,0,.35);
@@ -57,18 +69,41 @@
 <div class="layout">
   <div id="sidebar">
     <h4 class="p-3 m-0">Student Panel</h4>
-    <div class="px-3 pb-2" style="font-size:14px;">
+
+    <%-- Sidebar: profile pic + welcome --%>
+    <div class="px-3 pb-2 text-center">
       <c:if test="${not empty sessionScope.user}">
-        <div class="mb-2">Welcome, <b>${sessionScope.user.firstName}</b></div>
+        <div class="mt-1 mb-2">
+          <c:choose>
+            <c:when test="${not empty sessionScope.user.profilePicURL}">
+              <img class="sidebar-avatar"
+                   src="${sessionScope.user.profilePicURL}"
+                   alt="profile">
+            </c:when>
+            <c:otherwise>
+              <img class="sidebar-avatar"
+                   src="https://ui-avatars.com/api/?name=${sessionScope.user.firstName}+${sessionScope.user.lastName}&background=495057&color=fff&size=128"
+                   alt="profile">
+            </c:otherwise>
+          </c:choose>
+        </div>
+        <div class="mb-3" style="font-size:14px;">
+          Welcome, <b>${sessionScope.user.firstName}</b>
+        </div>
       </c:if>
     </div>
 
+    <div class="sidebar-section-label">Main</div>
     <a href="${pageContext.request.contextPath}/student/dashboard">
       <i class="bi bi-grid me-2"></i>Dashboard
     </a>
+
+    <div class="sidebar-section-label">Exams</div>
     <a href="${pageContext.request.contextPath}/student/exams">
       <i class="bi bi-ui-checks-grid me-2"></i>Available Exams
     </a>
+
+    <div class="sidebar-section-label">Results</div>
     <a href="${pageContext.request.contextPath}/student/results">
       <i class="bi bi-bar-chart me-2"></i>My Results
     </a>
@@ -92,19 +127,13 @@
       </div>
 
       <div class="d-flex align-items-center gap-2">
-        <div class="d-none d-md-block">
-          <div class="input-group">
-            <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
-            <input class="form-control" placeholder="Search...">
-          </div>
-        </div>
-
         <div class="dropdown">
           <a class="d-flex align-items-center text-decoration-none"
              href="#" role="button"
              data-bs-toggle="dropdown" aria-expanded="false">
 
-            <%-- PROFILE PIC: Cloudinary URL or default --%>
+            <%-- FIXED: was default-user.png (missing file)
+                 NOW: ui-avatars generates initials automatically --%>
             <c:choose>
               <c:when test="${not empty sessionScope.user.profilePicURL}">
                 <img class="avatar"
@@ -113,7 +142,7 @@
               </c:when>
               <c:otherwise>
                 <img class="avatar"
-                     src="${pageContext.request.contextPath}/images/default-user.png"
+                     src="https://ui-avatars.com/api/?name=${sessionScope.user.firstName}+${sessionScope.user.lastName}&background=0D6EFD&color=fff&size=128"
                      alt="profile">
               </c:otherwise>
             </c:choose>

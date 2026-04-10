@@ -2,6 +2,7 @@
 <%@ include file="/WEB-INF/views/examiner/examiner_header.jsp" %>
 
 <div class="card border-0 shadow-sm rounded-4 mb-4">
+<a href="${pageContext.request.contextPath}/examiner/dashboard" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
   <div class="card-body">
     <h3 class="mb-3">All Subjects</h3>
     <div class="table-responsive">

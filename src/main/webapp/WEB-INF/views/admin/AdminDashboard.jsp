@@ -44,7 +44,7 @@
   <div>
     <h2 class="dash-title">Admin Dashboard</h2>
     <p class="text-muted m-0 dash-sub">
-      Manage users, subjects, and exams from the sidebar.
+      
     </p>
   </div>
 </div>
@@ -113,9 +113,173 @@
       </div>
     </div>
   </div>
+  
+ <!-- ================= ADMIN CHARTS START ================= -->
+<div class="row mt-3">
+
+    <div class="col-12 mb-3">
+        <div class="d-flex align-items-center justify-content-between">
+            <h5 class="mb-0 fw-bold text-dark">Dashboard Analytics</h5>
+            <span class="badge rounded-pill bg-primary px-3 py-2">Live Overview</span>
+        </div>
+        <hr class="mt-2 mb-3">
+    </div>
+
+    <!-- Users by Role -->
+    <div class="col-lg-6 col-md-12 mb-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-primary text-white py-2 border-0 rounded-top-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-users me-2"></i> Users by Role
+                    </h6>
+                    <span class="badge bg-light text-primary">Overview</span>
+                </div>
+            </div>
+            <div class="card-body bg-white p-3">
+                <div class="mb-2 text-muted small">
+                    Admin, Examiner and Student distribution.
+                </div>
+                <div class="d-flex justify-content-center">
+                    <div style="width: 100%; max-width: 260px;">
+                        <canvas id="usersRoleChart" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exams by Status -->
+    <div class="col-lg-6 col-md-12 mb-3">
+        <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-success text-white py-2 border-0 rounded-top-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-file-alt me-2"></i> Exams by Status
+                    </h6>
+                    <span class="badge bg-light text-success">Status</span>
+                </div>
+            </div>
+            <div class="card-body bg-white p-3">
+                <div class="mb-2 text-muted small">
+                    Active and inactive exam count.
+                </div>
+                <div class="d-flex justify-content-center">
+                    <div style="width: 100%; max-width: 260px;">
+                        <canvas id="examStatusChart" height="160"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Subject-wise Exam Count -->
+    <div class="col-12 mb-3">
+        <div class="card border-0 shadow-sm rounded-4">
+            <div class="card-header bg-info text-white py-2 border-0 rounded-top-4">
+                <div class="d-flex align-items-center justify-content-between">
+                    <h6 class="mb-0 fw-semibold">
+                        <i class="fas fa-chart-bar me-2"></i> Subject-wise Exam Count
+                    </h6>
+                    <span class="badge bg-light text-info">Analysis</span>
+                </div>
+            </div>
+            <div class="card-body bg-white p-3">
+                <div class="mb-2 text-muted small">
+                    Number of exams in each subject.
+                </div>
+                <canvas id="subjectExamChart" height="65"></canvas>
+            </div>
+        </div>
+    </div>
 
 </div>
+<!-- ================= ADMIN CHARTS END ================= -->
+  
 
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+
+    // Users by Role
+    const usersRoleCanvas = document.getElementById('usersRoleChart');
+    if (usersRoleCanvas) {
+        new Chart(usersRoleCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Admin', 'Examiner', 'Student'],
+                datasets: [{
+                    data: [${adminCount}, ${examinerCount}, ${studentCount}],
+                    backgroundColor: ['#4e73df', '#1cc88a', '#f6c23e'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // Exams by Status
+    const examStatusCanvas = document.getElementById('examStatusChart');
+    if (examStatusCanvas) {
+        new Chart(examStatusCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active', 'Inactive'],
+                datasets: [{
+                    data: [${activeExamCount}, ${inactiveExamCount}],
+                    backgroundColor: ['#36b9cc', '#e74a3b'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    // Subject-wise Exam Count
+    const subjectExamCanvas = document.getElementById('subjectExamChart');
+    if (subjectExamCanvas) {
+        new Chart(subjectExamCanvas, {
+            type: 'bar',
+            data: {
+                labels: [${subjectLabels}],
+                datasets: [{
+                    label: 'No. of Exams',
+                    data: [${subjectExamCounts}],
+                    backgroundColor: '#4e73df',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    }
+
+});
+</script>
+
+<script> ... chart JS ... </script>
 <!-- Optional: keep your old 3 cards below if you want, or remove -->
 <!-- If you want, I can also add “Recent Exams / Recent Users” tables later -->
 

@@ -6,6 +6,7 @@
 <div class="card border-0 shadow-sm rounded-4">
   <div class="card-body">
     <h3 class="mb-3">Add Question</h3>
+    <a href="${pageContext.request.contextPath}/examiner/questions" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Questions</a>
 
     <c:if test="${not empty error}">
       <div class="alert alert-danger">${error}</div>

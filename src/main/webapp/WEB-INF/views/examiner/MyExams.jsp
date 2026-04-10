@@ -88,12 +88,15 @@
 </style>
 
 <div class="page-wrapper">
-
+<a href="${pageContext.request.contextPath}/examiner/dashboard" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Dashboard</a>
   <div class="top-bar">
+  
     <h2>${not empty pageTitle ? pageTitle : 'Exams'}</h2>
+    
     <a class="btn-add"
        href="${pageContext.request.contextPath}/examiner/addExam">
       + Add New Exam
+      
     </a>
   </div>
 

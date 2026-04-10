@@ -1,7 +1,7 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-<%@ include file="/WEB-INF/views/admin/header.jsp" %>
+<%@ include file="/WEB-INF/views/examiner/examiner_header.jsp" %>
 
-<a href="${pageContext.request.contextPath}/admin/dashboard"
+<a href="${pageContext.request.contextPath}/examiner/dashboard"
    class="btn btn-outline-secondary btn-sm mb-3">
   <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
 </a>
@@ -24,7 +24,7 @@
 
 <div class="card border-0 shadow-sm rounded-4">
   <div class="card-body p-4">
-    <form action="${pageContext.request.contextPath}/admin/updateProfile"
+    <form action="${pageContext.request.contextPath}/examiner/updateProfile"
           method="post"
           enctype="multipart/form-data">
 
@@ -33,7 +33,6 @@
         <%-- LEFT: Profile picture --%>
         <div class="col-md-3 text-center mb-4">
 
-          <%-- FIXED: ui-avatars fallback instead of missing default-user.png --%>
           <c:choose>
             <c:when test="${not empty userData.profilePicURL}">
               <img id="previewImg"
@@ -43,6 +42,7 @@
                           border:4px solid #e9ecef;">
             </c:when>
             <c:otherwise>
+              <%-- ui-avatars generates initials automatically --%>
               <img id="previewImg"
                    src="https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}&background=0D6EFD&color=fff&size=200"
                    class="rounded-circle mb-3"
@@ -88,16 +88,14 @@
               <label class="form-label fw-bold">Email</label>
               <input type="email"
                      class="form-control bg-light"
-                     value="${userData.email}"
-                     readonly>
+                     value="${userData.email}" readonly>
             </div>
 
             <div class="col-md-6 mb-3">
               <label class="form-label fw-bold">Role</label>
               <input type="text"
                      class="form-control bg-light"
-                     value="${userData.role}"
-                     readonly>
+                     value="${userData.role}" readonly>
             </div>
 
             <div class="col-md-6 mb-3">
@@ -131,8 +129,7 @@
               <label class="form-label fw-bold">Member Since</label>
               <input type="text"
                      class="form-control bg-light"
-                     value="${userData.createdAt}"
-                     readonly>
+                     value="${userData.createdAt}" readonly>
             </div>
 
           </div>
@@ -164,4 +161,4 @@ function previewImage(event) {
 }
 </script>
 
-<%@ include file="/WEB-INF/views/admin/footer.jsp" %>
+<%@ include file="/WEB-INF/views/examiner/examiner_footer.jsp" %>

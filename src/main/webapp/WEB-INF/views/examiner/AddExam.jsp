@@ -96,7 +96,9 @@
 </style>
 
 <div class="page-wrapper">
+<a href="${pageContext.request.contextPath}/examiner/myExams" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to My Exams</a>
   <div class="form-container">
+  
     <h2>Create New Exam</h2>
 
     <c:if test="${not empty error}">

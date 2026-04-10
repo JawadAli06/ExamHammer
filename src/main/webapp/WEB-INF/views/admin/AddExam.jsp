@@ -9,6 +9,7 @@
             <h4 class="text-center mb-4">Add / Edit Exam</h4>
 
             <form action="${pageContext.request.contextPath}/admin/exams/save" method="post">
+            <a href="${pageContext.request.contextPath}/admin/exams" class="btn btn-outline-secondary btn-sm mb-3"><i class="bi bi-arrow-left me-1"></i>Back to Exams</a>
 
                 <input type="hidden" name="examId" value="${exam.examId}" />
 

@@ -1,5 +1,11 @@
-<%@ include file="/WEB-INF/views/admin/header.jsp" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
+<%@ include file="/WEB-INF/views/admin/header.jsp" %>
+
+<%-- Back button at top --%>
+<a href="${pageContext.request.contextPath}/admin/users"
+   class="btn btn-outline-secondary btn-sm mb-3">
+  <i class="bi bi-arrow-left me-1"></i>Back to Users
+</a>
 
 <h3>Add / Edit User</h3>
 <hr>
@@ -35,9 +41,9 @@
     <div class="mb-3">
         <label>Gender</label>
         <select name="gender" class="form-control">
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Other">Other</option>
+            <option value="Male"   ${user.gender == 'Male'   ? 'selected' : ''}>Male</option>
+            <option value="Female" ${user.gender == 'Female' ? 'selected' : ''}>Female</option>
+            <option value="Other"  ${user.gender == 'Other'  ? 'selected' : ''}>Other</option>
         </select>
     </div>
 
@@ -56,15 +62,19 @@
     <div class="mb-3">
         <label>Role</label>
         <select name="role" class="form-control">
-            <option value="ADMIN">ADMIN</option>
-            <option value="EXAMINER">EXAMINER</option>
-            <option value="STUDENT">STUDENT</option>
+            <option value="ADMIN"     ${user.role == 'ADMIN'     ? 'selected' : ''}>ADMIN</option>
+            <option value="EXAMINER"  ${user.role == 'EXAMINER'  ? 'selected' : ''}>EXAMINER</option>
+            <option value="STUDENT"   ${user.role == 'STUDENT'   ? 'selected' : ''}>STUDENT</option>
         </select>
     </div>
 
-    <button class="btn btn-success">Save</button>
+    <button class="btn btn-success">
+        <i class="bi bi-save me-1"></i>Save
+    </button>
     <a href="${pageContext.request.contextPath}/admin/users"
-       class="btn btn-secondary">Back</a>
+       class="btn btn-secondary ms-2">
+        <i class="bi bi-arrow-left me-1"></i>Back
+    </a>
 
 </form>
 

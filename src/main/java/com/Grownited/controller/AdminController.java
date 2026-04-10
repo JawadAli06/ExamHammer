@@ -1,7 +1,6 @@
 package com.Grownited.controller;
 
 import com.Grownited.entity.DifficultyLevelEntity;
-import com.Grownited.entity.ExamAttemptEntity;
 import com.Grownited.entity.ExamEntity;
 import com.Grownited.entity.SubjectEntity;
 import com.Grownited.entity.UserEntity;
@@ -10,17 +9,18 @@ import com.Grownited.repository.ExamAttemptRepository;
 import com.Grownited.repository.ExamRepository;
 import com.Grownited.repository.SubjectRepository;
 import com.Grownited.repository.UserRepository;
-import java.time.LocalDate;
-import java.util.List;
-
-import org.springframework.format.annotation.DateTimeFormat;
-
-
+import com.Grownited.service.CloudinaryService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDate;
+import java.util.List;
 
 @Controller
 @RequestMapping("/admin")
@@ -31,67 +31,124 @@ public class AdminController {
     @Autowired private ExamRepository examRepository;
     @Autowired private DifficultyLevelRepository difficultyRepository;
     @Autowired private ExamAttemptRepository examAttemptRepository;
-    
-    
-    
+    @Autowired private CloudinaryService cloudinaryService;
+    @Autowired private BCryptPasswordEncoder passwordEncoder;
+
+    private boolean isAdmin(HttpSession session) {
+        UserEntity user = (UserEntity) session.getAttribute("user");
+        return user != null && user.getRole() == UserEntity.Role.ADMIN;
+    }
+
     // ================= DASHBOARD =================
-    
+
     @GetMapping("/dashboard")
     public String dashboard(Model model) {
+
+        // ================= TOP WIDGETS =================
         model.addAttribute("totalUsers", userRepository.count());
         model.addAttribute("totalSubjects", subjectRepository.count());
         model.addAttribute("totalExams", examRepository.count());
         model.addAttribute("activeExams", examRepository.countByStatus(ExamEntity.Status.ACTIVE));
+        model.addAttribute("totalAttempts", examAttemptRepository.count());
+        
+        // ================= CHART 1: USERS BY ROLE =================
+        long adminCount = userRepository.countByRole(UserEntity.Role.ADMIN);
+        long examinerCount = userRepository.countByRole(UserEntity.Role.EXAMINER);
+        long studentCount = userRepository.countByRole(UserEntity.Role.STUDENT);
+
+        model.addAttribute("adminCount", adminCount);
+        model.addAttribute("examinerCount", examinerCount);
+        model.addAttribute("studentCount", studentCount);
+
+        // ================= CHART 2: EXAMS BY STATUS =================
+        long activeExamCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
+        long inactiveExamCount = examRepository.countByStatus(ExamEntity.Status.INACTIVE);
+
+        model.addAttribute("activeExamCount", activeExamCount);
+        model.addAttribute("inactiveExamCount", inactiveExamCount);
+
+        // ================= CHART 3: SUBJECT-WISE EXAM COUNT =================
+        List<SubjectEntity> subjects = subjectRepository.findAll();
+
+        StringBuilder subjectLabels = new StringBuilder();
+        StringBuilder subjectExamCounts = new StringBuilder();
+
+        for (int i = 0; i < subjects.size(); i++) {
+            SubjectEntity subject = subjects.get(i);
+            long examCount = examRepository.countBySubject(subject);
+
+            subjectLabels.append("'").append(subject.getSubjectName()).append("'");
+            subjectExamCounts.append(examCount);
+
+            if (i < subjects.size() - 1) {
+                subjectLabels.append(",");
+                subjectExamCounts.append(",");
+            }
+        }
+
+        model.addAttribute("subjectLabels", subjectLabels.toString());
+        model.addAttribute("subjectExamCounts", subjectExamCounts.toString());
+        model.addAttribute("totalAttempts", examAttemptRepository.count());
         return "admin/AdminDashboard";
     }
-    
-   // @GetMapping("/dashboard")
-   // public String dashboard() {
-     //   return "admin/AdminDashboard";
-   // }
-
     // ================= USER CRUD =================
+
     @GetMapping("/users")
-    public String userList(Model model) {
+    public String userList(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("users", userRepository.findAll());
         return "admin/UserList";
     }
 
     @GetMapping("/users/add")
-    public String addUserForm(Model model) {
+    public String addUserForm(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("user", new UserEntity());
         return "admin/AddUser";
     }
 
     @PostMapping("/users/save")
-    public String saveUser(@ModelAttribute UserEntity user) {
+    public String saveUser(@ModelAttribute UserEntity user, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
+
         if (user.getRole() == null) user.setRole(UserEntity.Role.STUDENT);
         if (user.getActive() == null) user.setActive(true);
+
+        // If password is plain text from AddUser form, encode it
+        if (user.getPassword() != null && !user.getPassword().startsWith("$2a$") && !user.getPassword().startsWith("$2b$")) {
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+
         userRepository.save(user);
         return "redirect:/admin/users";
     }
 
     @GetMapping("/users/edit/{id}")
-    public String editUser(@PathVariable Integer id, Model model) {
+    public String editUser(@PathVariable Integer id, Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("user", userRepository.findById(id).orElse(null));
         return "admin/AddUser";
     }
 
     @GetMapping("/users/delete/{id}")
-    public String deleteUser(@PathVariable Integer id) {
+    public String deleteUser(@PathVariable Integer id, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         userRepository.deleteById(id);
         return "redirect:/admin/users";
     }
 
     // ================= SUBJECT CRUD =================
+
     @GetMapping("/subjects")
-    public String subjectList(Model model) {
+    public String subjectList(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("subjects", subjectRepository.findAll());
         return "admin/SubjectList";
     }
 
     @GetMapping("/subjects/add")
-    public String addSubjectPage(Model model) {
+    public String addSubjectPage(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("subject", new SubjectEntity());
         return "admin/AddSubject";
     }
@@ -113,30 +170,23 @@ public class AdminController {
         subjectRepository.save(subject);
         return "redirect:/admin/subjects";
     }
-    
-    // ✅ IMPORTANT: mapping is "/subjects/save" (NOT "/admin/subjects/save")
-   /* @PostMapping("/subjects/save")
-    public String saveSubject(@ModelAttribute SubjectEntity subject) {
-        if (subject.getActive() == null) subject.setActive(true);
-        subjectRepository.save(subject);
-        return "redirect:/admin/subjects";
-    }*/
 
     @GetMapping("/subjects/edit/{id}")
-    public String editSubject(@PathVariable Integer id, Model model) {
+    public String editSubject(@PathVariable Integer id, Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         model.addAttribute("subject", subjectRepository.findById(id).orElse(null));
         return "admin/AddSubject";
     }
 
-    // ✅ FIXED delete: use @PathVariable and soft delete
     @GetMapping("/subjects/delete/{id}")
-    public String deleteSubject(@PathVariable Integer id) {
+    public String deleteSubject(@PathVariable Integer id, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
         SubjectEntity s = subjectRepository.findById(id).orElseThrow();
         s.setActive(false);
         subjectRepository.save(s);
         return "redirect:/admin/subjects";
     }
-    
+
     @GetMapping("/addSubject")
     public String redirectAddSubject() {
         return "redirect:/admin/subjects/add";
@@ -148,32 +198,27 @@ public class AdminController {
     }
 
     // ================= EXAM CRUD =================
-    
+
     @GetMapping("/exams")
-    public String examList(@RequestParam(required = false) ExamEntity.Status status, Model model) {
+    public String examList(@RequestParam(required = false) ExamEntity.Status status, Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
+
         if (status != null) model.addAttribute("exams", examRepository.findByStatus(status));
         else model.addAttribute("exams", examRepository.findAll());
+
         return "admin/ExamList";
     }
-    
-  // @GetMapping("/exams")
-    //public String examList(Model model) {
-      //  model.addAttribute("exams", examRepository.findAll());
-        //return "admin/ExamList";
-    //}
 
     @GetMapping("/exams/add")
-    public String addExamForm(Model model) {
+    public String addExamForm(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
+
         model.addAttribute("exam", new ExamEntity());
-
-        // you can use findAll() OR only active:
         model.addAttribute("subjects", subjectRepository.findAll());
-        // model.addAttribute("subjects", subjectRepository.findByActiveTrue());
-
         model.addAttribute("difficulties", difficultyRepository.findAll());
         return "admin/AddExam";
     }
-    
+
     @PostMapping("/exams/save")
     public String saveExam(ExamEntity exam,
                            @RequestParam Integer subjectId,
@@ -185,19 +230,11 @@ public class AdminController {
                            HttpSession session,
                            Model model) {
 
-        System.out.println("SESSION USER = " + session.getAttribute("user"));
         UserEntity logged = (UserEntity) session.getAttribute("user");
 
-        System.out.println("LOGGED = " + logged);
-        System.out.println("ROLE   = " + (logged == null ? "null" : logged.getRole()));
-        System.out.println("EMAIL  = " + (logged == null ? "null" : logged.getEmail()));
-        System.out.println("SESSION ID = " + session.getId());
-
-        // 1) Session check
         if (logged == null) return "redirect:/login";
         if (logged.getRole() != UserEntity.Role.ADMIN) return "redirect:/login";
 
-        // 2) Fetch subject + difficulty
         SubjectEntity subject = subjectRepository.findById(subjectId).orElse(null);
         DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId).orElse(null);
 
@@ -208,7 +245,6 @@ public class AdminController {
             return "admin/AddExam";
         }
 
-        // Optional validation
         if (startDate != null && endDate != null && endDate.isBefore(startDate)) {
             model.addAttribute("error", "End date must be after start date");
             model.addAttribute("subjects", subjectRepository.findAll());
@@ -216,23 +252,16 @@ public class AdminController {
             return "admin/AddExam";
         }
 
-        // 3) Set relations
         exam.setSubject(subject);
         exam.setDifficulty(difficulty);
-
-        // IMPORTANT: because exam.subject_name is NOT NULL in DB
         exam.setSubjectName(subject.getSubjectName());
-
-        // created_by NOT NULL
         exam.setCreatedBy(logged);
 
-        // 4) Fields
         exam.setNegativeMarking(negativeMarking != null ? negativeMarking : false);
         exam.setPassingScore(passingScore);
         exam.setStartDate(startDate);
         exam.setEndDate(endDate);
 
-        // 5) Default status
         if (exam.getStatus() == null) {
             exam.setStatus(ExamEntity.Status.ACTIVE);
         }
@@ -240,122 +269,94 @@ public class AdminController {
         examRepository.save(exam);
         return "redirect:/admin/exams";
     }
-    
-   /* @PostMapping("/exams/save")
-    public String saveExam(ExamEntity exam,
-                           @RequestParam Integer subjectId,
-                           @RequestParam Integer difficultyId,
-                           
-                           HttpSession session,
-                           Model model) {
-    	
-    	System.out.println("SESSION USER = " + session.getAttribute("user"));
-    	UserEntity logged = (UserEntity) session.getAttribute("user");
 
-    	System.out.println("LOGGED = " + logged);
-    	System.out.println("ROLE   = " + (logged == null ? "null" : logged.getRole()));
-    	System.out.println("EMAIL  = " + (logged == null ? "null" : logged.getEmail()));
-    	System.out.println("SESSION ID = " + session.getId());
-        // 1) Session check
-    	
-        //UserEntity logged = (UserEntity) session.getAttribute("user");
-        if (logged == null) {
-            return "redirect:/login";
-        }
-        if (logged.getRole() != UserEntity.Role.ADMIN) {
-            return "redirect:/login";
-        }
+    // ================= PROFILE =================
 
-        // 2) Fetch subject + difficulty
-        SubjectEntity subject = subjectRepository.findById(subjectId).orElse(null);
-        DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId).orElse(null);
-
-        if (subject == null || difficulty == null) {
-            model.addAttribute("error", "Please select valid subject and difficulty");
-            model.addAttribute("subjects", subjectRepository.findAll());
-            model.addAttribute("difficulties", difficultyRepository.findAll());
-            return "admin/AddExam";
-        }
-
-     // 3) Set relations
-        exam.setSubject(subject);
-        exam.setDifficulty(difficulty);
-        
-      
-        // IMPORTANT: because exam.subject_name is NOT NULL in DB
-        exam.setSubjectName(subject.getSubjectName());
-
-        // IMPORTANT: created_by is NOT NULL in DB
-        exam.setCreatedBy(logged);
-        
-        // 5) Default status
-        if (exam.getStatus() == null) {
-            exam.setStatus(ExamEntity.Status.ACTIVE);
-        }
-
-        examRepository.save(exam);
-        return "redirect:/admin/exams";
-    }*/
-
-    // ✅ IMPORTANT: mapping is "/exams/save" (NOT "/admin/exams/save")
-  /*  @PostMapping("/exams/save")
-    public String saveExam(@ModelAttribute ExamEntity exam,
-                           @RequestParam("subjectId") Integer subjectId,
-                           @RequestParam("difficultyId") Integer difficultyId,
-                           HttpSession session) {
-
-        UserEntity admin = (UserEntity) session.getAttribute("user");
-        if (admin == null) return "redirect:/login";
-
-        SubjectEntity subject = subjectRepository.findById(subjectId)
-                .orElseThrow(() -> new RuntimeException("Invalid subjectId: " + subjectId));
-
-        DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId)
-                .orElseThrow(() -> new RuntimeException("Invalid difficultyId: " + difficultyId));
-
-        exam.setSubject(subject);
-        exam.setSubjectName(subject.getSubjectName()); // IMPORTANT (DB needs subject_name)
-        exam.setDifficulty(difficulty);
-      
-
-
-        // ✅ REQUIRED because created_by is nullable=false in entity/table
-        exam.setCreatedBy(admin);
-
-        if (exam.getStatus() == null) exam.setStatus(ExamEntity.Status.ACTIVE);
-
-        examRepository.save(exam);
-        return "redirect:/admin/exams";
-    }*/
-
-    @GetMapping("/exams/edit/{id}")
-    public String editExam(@PathVariable Integer id, Model model) {
-        model.addAttribute("exam", examRepository.findById(id).orElse(null));
-        model.addAttribute("subjects", subjectRepository.findAll());
-        model.addAttribute("difficulties", difficultyRepository.findAll());
-        return "admin/AddExam";
-    }
-
-    @GetMapping("/exams/delete/{id}")
-    public String deleteExam(@PathVariable Integer id) {
-        examRepository.deleteById(id);
-        return "redirect:/admin/exams";
-    }
-    
-    @GetMapping("/results")
-    public String allResults(Model model) {
-        List<ExamAttemptEntity> results = examAttemptRepository.findAll();
-        model.addAttribute("results", results);
-        return "admin/results";
-    }
-    
- // ================= PROFILE =================
     @GetMapping("/profile")
-    public String profilePage() {
-        return "admin/Profile";  // create Profile.jsp
+    public String profile(HttpSession session, Model model) {
+        if (!isAdmin(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        model.addAttribute("userData", dbUser);
+        return "admin/Profile";
     }
 
-    
-    
-    
+    @PostMapping("/updateProfile")
+    public String updateProfile(@RequestParam String firstName,
+                                @RequestParam String lastName,
+                                @RequestParam(required = false) String gender,
+                                @RequestParam(required = false) String contactNum,
+                                @RequestParam(required = false) Integer birthYear,
+                                @RequestParam(value = "profilePic", required = false) MultipartFile profilePic,
+                                HttpSession session,
+                                Model model) {
+        if (!isAdmin(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        dbUser.setFirstName(firstName);
+        dbUser.setLastName(lastName);
+        dbUser.setGender(gender);
+        dbUser.setContactNum(contactNum);
+        dbUser.setBirthYear(birthYear);
+
+        if (profilePic != null && !profilePic.isEmpty()) {
+            try {
+                String picUrl = cloudinaryService.uploadProfilePic(profilePic);
+                dbUser.setProfilePicURL(picUrl);
+            } catch (Exception e) {
+                model.addAttribute("error", "Profile picture upload failed.");
+            }
+        }
+
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Profile updated successfully.");
+        model.addAttribute("userData", dbUser);
+        return "admin/Profile";
+    }
+
+    // ================= CHANGE PASSWORD =================
+
+    @GetMapping("/changePassword")
+    public String changePasswordPage(HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
+        return "admin/ChangePassword";
+    }
+
+    @PostMapping("/updatePassword")
+    public String updatePassword(@RequestParam String currentPassword,
+                                 @RequestParam String newPassword,
+                                 @RequestParam String confirmPassword,
+                                 HttpSession session,
+                                 Model model) {
+        if (!isAdmin(session)) return "redirect:/login";
+
+        UserEntity sessionUser = (UserEntity) session.getAttribute("user");
+        UserEntity dbUser = userRepository.findById(sessionUser.getUserId()).orElse(null);
+        if (dbUser == null) return "redirect:/login";
+
+        if (!passwordEncoder.matches(currentPassword, dbUser.getPassword())) {
+            model.addAttribute("error", "Current password is incorrect.");
+            return "admin/ChangePassword";
+        }
+
+        if (!newPassword.equals(confirmPassword)) {
+            model.addAttribute("error", "New password and confirm password do not match.");
+            return "admin/ChangePassword";
+        }
+
+        dbUser.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(dbUser);
+        session.setAttribute("user", dbUser);
+
+        model.addAttribute("success", "Password changed successfully.");
+        return "admin/ChangePassword";
+    }
 }

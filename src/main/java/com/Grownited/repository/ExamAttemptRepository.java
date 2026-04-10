@@ -7,10 +7,8 @@ import com.Grownited.entity.ExamAttemptEntity;
 import com.Grownited.entity.UserEntity;
 
 @Repository
-public interface ExamAttemptRepository
-        extends JpaRepository<ExamAttemptEntity, Integer> {
+public interface ExamAttemptRepository extends JpaRepository<ExamAttemptEntity, Integer> {
 
-    // FIXED: pass UserEntity object directly — not UserId
     List<ExamAttemptEntity> findByStudent(UserEntity student);
 
     long countByStudent(UserEntity student);
@@ -18,4 +16,6 @@ public interface ExamAttemptRepository
     List<ExamAttemptEntity> findByExamCreatedBy(UserEntity examiner);
 
     long countByExamCreatedBy(UserEntity examiner);
+
+    long countByResult(ExamAttemptEntity.Result result);
 }
