@@ -1,5 +1,10 @@
 <%@ include file="/WEB-INF/views/admin/header.jsp" %>
 
+<a href="${pageContext.request.contextPath}/admin/dashboard"
+   class="btn btn-outline-secondary btn-sm mb-3">
+   <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+</a>
+
 <h3 class="fw-bold mb-2">Change Password</h3>
 <p class="text-muted mb-3">Update your account password securely.</p>
 

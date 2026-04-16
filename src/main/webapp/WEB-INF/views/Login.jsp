@@ -63,9 +63,9 @@ pageEncoding="UTF-8"%>
 				</p>
 				
 				<p>
-				<a href="${pageContext.request.contextPath}/forgetPassword">
-				Forgot Password?
-				</a>
+				<a href="${pageContext.request.contextPath}/forget-password">
+    Forgot Password?
+</a>
 				</p>
 				
 				</div>

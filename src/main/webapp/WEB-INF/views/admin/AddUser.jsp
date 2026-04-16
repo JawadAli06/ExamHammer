@@ -31,12 +31,19 @@
         <input type="email" name="email" class="form-control"
                value="${user.email}" required>
     </div>
+    
+    <c:if test="${user.userId == null}">
+    <div>
+        <label>Password:</label>
+        <input type="password" name="password" required />
+    </div>
+</c:if>
 
-    <div class="mb-3">
+   <!--   <div class="mb-3">
         <label>Password</label>
         <input type="text" name="password" class="form-control"
                value="${user.password}" required>
-    </div>
+    </div>-->
 
     <div class="mb-3">
         <label>Gender</label>

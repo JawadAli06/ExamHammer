@@ -106,8 +106,27 @@ public class AdminController {
         model.addAttribute("user", new UserEntity());
         return "admin/AddUser";
     }
-
+    
     @PostMapping("/users/save")
+    public String saveUser(UserEntity user) {
+
+        if (user.getUserId() != null) {
+            // EDIT case
+            UserEntity existingUser = userRepository.findById(user.getUserId()).orElse(null);
+
+            if (existingUser != null) {
+                user.setPassword(existingUser.getPassword()); // 🔒 keep old password
+            }
+        } else {
+            // ADD case
+            user.setPassword(passwordEncoder.encode(user.getPassword()));
+        }
+
+        userRepository.save(user);
+        return "redirect:/admin/users";
+    }
+
+  /*  @PostMapping("/users/save")
     public String saveUser(@ModelAttribute UserEntity user, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/login";
 
@@ -121,7 +140,7 @@ public class AdminController {
 
         userRepository.save(user);
         return "redirect:/admin/users";
-    }
+    }*/
     
     @GetMapping("/users/view/{id}")
     public String viewUser(@PathVariable("id") Integer id, Model model) {

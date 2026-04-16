@@ -130,8 +130,9 @@ public class SessionController {
 
     // ================== FORGET PASSWORD ==================
 
-    @GetMapping("/forgetPassword")
+    @GetMapping("/forget-password")
     public String openForgetPasswordPage() {
+        System.out.println("Forget Password HIT");
         return "ForgetPassword";
     }
 

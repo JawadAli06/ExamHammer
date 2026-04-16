@@ -1,5 +1,6 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ include file="/WEB-INF/views/admin/header.jsp" %>
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 
 <a href="${pageContext.request.contextPath}/admin/dashboard"
    class="btn btn-outline-secondary btn-sm mb-3">
@@ -35,13 +36,14 @@
 
           <%-- FIXED: ui-avatars fallback instead of missing default-user.png --%>
           <c:choose>
-            <c:when test="${not empty userData.profilePicURL}">
+         
+           <c:when test="${not empty userData.profilePicURL}">
               <img id="previewImg"
                    src="${userData.profilePicURL}"
                    class="rounded-circle mb-3"
                    style="width:140px;height:140px;object-fit:cover;
                           border:4px solid #e9ecef;">
-            </c:when>
+            </c:when> 
             <c:otherwise>
               <img id="previewImg"
                    src="https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}&background=0D6EFD&color=fff&size=200"

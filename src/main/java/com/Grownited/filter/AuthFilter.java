@@ -27,8 +27,8 @@ public class AuthFilter implements Filter {
 		HttpServletRequest req = (HttpServletRequest) request;
 		HttpServletResponse res = (HttpServletResponse) response;
 		
-		String url = req.getRequestURL().toString();
-		String uri = req.getRequestURI().toString();
+		
+		String uri = req.getRequestURI();
 
 		ArrayList<String> publicUrl = new ArrayList<>();
 
@@ -37,22 +37,27 @@ public class AuthFilter implements Filter {
 		publicUrl.add("/forget-password");
 		publicUrl.add("/authenticate");
 		publicUrl.add("/register");
+		publicUrl.add("/sendOtp");
+		publicUrl.add("/verifyOtpAndReset");
 
-		if (publicUrl.contains(uri) || uri.contains("assets")) {
-			// go ahead
-			chain.doFilter(request, response);
+		boolean isPublic = publicUrl.stream().anyMatch(uri::contains);
+
+		if (isPublic || uri.contains("assets")) {
+		    chain.doFilter(request, response);
+		    return;
+		}
+
+		System.out.println("AuthFilter ......" + new Date());
+		System.out.println(uri);
+
+		HttpSession session = req.getSession();
+		UserEntity user = (UserEntity) session.getAttribute("user");
+
+		if (user == null) {
+		    res.sendRedirect("/login");
 		} else {
-			System.out.println("AuthFilter ......" + new Date());
-			System.out.println(uri);
-			HttpSession session = req.getSession();
-			UserEntity user = (UserEntity) session.getAttribute("user");
-			if (user == null) {
-				// login
-//				req.getRequestDispatcher("/login").forward(request, response);
-				res.sendRedirect("/login");
-			} else {
-				chain.doFilter(request, response);
-			}
+		    chain.doFilter(request, response);
+		
 
 		}
 
