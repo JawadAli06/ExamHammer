@@ -81,11 +81,9 @@
       Click on an exam to view or manage its questions.
     </p>
   </div>
-  <a href="${pageContext.request.contextPath}/examiner/addQuestion"
-  
-     class="btn btn-success">+ Add Question</a>
+      <a href="${pageContext.request.contextPath}/examiner/addQuestion"class="btn btn-success">+ Add Question</a>
      
-     
+   
 </div>
 
 <c:if test="${empty exams}">

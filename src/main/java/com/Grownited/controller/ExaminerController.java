@@ -35,23 +35,30 @@ public class ExaminerController {
     // =====================
     // DASHBOARD
     // =====================
+    
     @GetMapping("/dashboard")
     public String dashboard(Model model, HttpSession session) {
         if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
 
-        long subjectCount = subjectRepository.countByActiveTrue();
-        long examCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
-        long questionCount = examQuestionRepository.countByCreatedBy(examiner);
-        long resultCount = examAttemptRepository.countByExamCreatedBy(examiner);
+        long subjectCount  = subjectRepository.countByActiveTrue();
+        long examCount     = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
 
-        model.addAttribute("subjectCount", subjectCount);
-        model.addAttribute("examCount", examCount);
+        // FIXED: directly count questions created by this examiner
+        // exam_question.created_by = 2 (Yuvraj) → returns 3 correctly
+        long questionCount = examQuestionRepository.countByCreatedBy(examiner);
+
+        long resultCount   = examAttemptRepository.count();
+
+        model.addAttribute("subjectCount",  subjectCount);
+        model.addAttribute("examCount",     examCount);
         model.addAttribute("questionCount", questionCount);
-        model.addAttribute("resultCount", resultCount);
+        model.addAttribute("resultCount",   resultCount);
 
         return "examiner/ExaminerDashboard";
     }
+    
+  
 
     // =====================
     // SUBJECTS
@@ -59,7 +66,11 @@ public class ExaminerController {
     @GetMapping("/subjects")
     public String subjectList(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
-        model.addAttribute("subjects", subjectRepository.findByActiveTrue());
+       // model.addAttribute("subjects", subjectRepository.findByActiveTrue());
+        UserEntity examiner = (UserEntity) session.getAttribute("user");
+
+        model.addAttribute("subjects",
+            subjectRepository.findVisibleSubjects(examiner.getUserId()));
         return "examiner/SubjectList";
     }
 
@@ -67,7 +78,7 @@ public class ExaminerController {
     public String addSubjectForm(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
         model.addAttribute("subjects", subjectRepository.findByActiveTrue());
-        return "examiner/SubjectList";
+        return "examiner/AddSubject"; 
     }
 
     @PostMapping("/saveSubject")
@@ -149,6 +160,9 @@ public class ExaminerController {
     // =====================
     // QUESTIONS
     // =====================
+    
+
+    
     @GetMapping("/addQuestion")
     public String addQuestionPage(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
@@ -291,13 +305,27 @@ public class ExaminerController {
     // =====================
     // RESULTS
     // =====================
+    
+    // both exam result
+    
     @GetMapping("/results")
+    public String results(HttpSession session, Model model) {
+        if (!isExaminer(session)) return "redirect:/login";
+
+        // Show ALL results
+        List<ExamAttemptEntity> results = examAttemptRepository.findAll();
+        model.addAttribute("results", results);
+        return "examiner/Results";
+    }
+    
+    
+    /*@GetMapping("/results")
     public String results(HttpSession session, Model model) {
         if (!isExaminer(session)) return "redirect:/login";
         UserEntity examiner = (UserEntity) session.getAttribute("user");
         model.addAttribute("results", examAttemptRepository.findByExamCreatedBy(examiner));
         return "examiner/Results";
-    }
+    }*/
 
     // =====================
     // PROFILE

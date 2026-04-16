@@ -122,6 +122,20 @@ public class AdminController {
         userRepository.save(user);
         return "redirect:/admin/users";
     }
+    
+    @GetMapping("/users/view/{id}")
+    public String viewUser(@PathVariable("id") Integer id, Model model) {
+
+        UserEntity user = userRepository.findById(id).orElse(null);
+
+        if (user == null) {
+            return "redirect:/admin/users";
+        }
+
+        model.addAttribute("user", user);
+
+        return "admin/ViewUser";
+    }
 
     @GetMapping("/users/edit/{id}")
     public String editUser(@PathVariable Integer id, Model model, HttpSession session) {
@@ -145,6 +159,8 @@ public class AdminController {
         model.addAttribute("subjects", subjectRepository.findAll());
         return "admin/SubjectList";
     }
+    
+    
 
     @GetMapping("/subjects/add")
     public String addSubjectPage(Model model, HttpSession session) {
@@ -171,6 +187,8 @@ public class AdminController {
         return "redirect:/admin/subjects";
     }
 
+   
+    
     @GetMapping("/subjects/edit/{id}")
     public String editSubject(@PathVariable Integer id, Model model, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/login";
@@ -178,7 +196,7 @@ public class AdminController {
         return "admin/AddSubject";
     }
 
-    @GetMapping("/subjects/delete/{id}")
+   @GetMapping("/subjects/delete/{id}")
     public String deleteSubject(@PathVariable Integer id, HttpSession session) {
         if (!isAdmin(session)) return "redirect:/login";
         SubjectEntity s = subjectRepository.findById(id).orElseThrow();
@@ -186,6 +204,8 @@ public class AdminController {
         subjectRepository.save(s);
         return "redirect:/admin/subjects";
     }
+    
+ 
 
     @GetMapping("/addSubject")
     public String redirectAddSubject() {
@@ -193,8 +213,9 @@ public class AdminController {
     }
 
     @GetMapping("/deleteSubject/{id}")
-    public String redirectDeleteSubject(@PathVariable Integer id) {
-        return "redirect:/admin/subjects/delete/" + id;
+    public String deleteSubject(@PathVariable("id") Integer id) {
+        subjectRepository.deleteById(id);
+        return "redirect:/admin/subjects";
     }
 
     // ================= EXAM CRUD =================
@@ -269,7 +290,99 @@ public class AdminController {
         examRepository.save(exam);
         return "redirect:/admin/exams";
     }
+    
+    @GetMapping("/exams/view/{id}")
+    public String viewExam(@PathVariable Integer id,
+                           HttpSession session,
+                           Model model) {
 
+        if (!isAdmin(session)) return "redirect:/login";
+
+        ExamEntity exam = examRepository.findById(id).orElse(null);
+
+        if (exam == null) {
+            return "redirect:/admin/exams";
+        }
+
+        model.addAttribute("exam", exam);
+
+        return "admin/ViewExam";
+    }
+    
+    @GetMapping("/exams/edit/{id}")
+    public String editExam(@PathVariable Integer id,
+                           HttpSession session,
+                           Model model) {
+
+        if (!isAdmin(session)) return "redirect:/login";
+
+        ExamEntity exam = examRepository.findById(id).orElse(null);
+
+        if (exam == null) {
+            return "redirect:/admin/exams";
+        }
+
+        model.addAttribute("exam", exam);
+        model.addAttribute("subjects", subjectRepository.findAll());
+        model.addAttribute("difficulties", difficultyRepository.findAll());
+
+        return "admin/AddExam";
+    }
+    
+    @PostMapping("/exams/update")
+    public String updateExam(@RequestParam Integer examId,
+                             @RequestParam String examName,
+                             @RequestParam Integer subjectId,
+                             @RequestParam Integer difficultyId,
+                             @RequestParam Integer totalMarks,
+                             HttpSession session) {
+
+        if (!isAdmin(session)) return "redirect:/login";
+
+        ExamEntity exam = examRepository.findById(examId).orElse(null);
+
+        if (exam == null) {
+            return "redirect:/admin/exams";
+        }
+
+        SubjectEntity subject = subjectRepository.findById(subjectId).orElse(null);
+        DifficultyLevelEntity difficulty = difficultyRepository.findById(difficultyId).orElse(null);
+
+        exam.setExamName(examName);
+        exam.setSubject(subject);
+        exam.setDifficulty(difficulty);
+        exam.setTotalMarks(totalMarks);
+
+        examRepository.save(exam);
+
+        return "redirect:/admin/exams";
+    }
+    
+    @GetMapping("/exams/delete/{id}")
+    public String deleteExam(@PathVariable Integer id,
+                             HttpSession session) {
+
+        if (!isAdmin(session)) return "redirect:/login";
+
+        ExamEntity exam = examRepository.findById(id).orElse(null);
+
+        if (exam != null) {
+            exam.setStatus(ExamEntity.Status.INACTIVE);
+            examRepository.save(exam);
+        }
+
+        return "redirect:/admin/exams";
+    }
+    
+    // ==================Results==================
+    
+    @GetMapping("/results")
+    public String results(Model model, HttpSession session) {
+        if (!isAdmin(session)) return "redirect:/login";
+        model.addAttribute("results", examAttemptRepository.findAll());
+        return "admin/Results";
+    }
+    
     // ================= PROFILE =================
 
     @GetMapping("/profile")

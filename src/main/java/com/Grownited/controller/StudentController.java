@@ -4,10 +4,15 @@ import com.Grownited.entity.ExamAttemptEntity;
 import com.Grownited.entity.ExamEntity;
 import com.Grownited.entity.ExamQuestionEntity;
 import com.Grownited.entity.QuestionBankEntity;
+import com.Grownited.entity.StudentAnswerEntity;
+import com.Grownited.entity.StudentProgressEntity;
+import com.Grownited.entity.SubjectEntity;
 import com.Grownited.entity.UserEntity;
 import com.Grownited.repository.ExamAttemptRepository;
 import com.Grownited.repository.ExamQuestionRepository;
 import com.Grownited.repository.ExamRepository;
+import com.Grownited.repository.StudentAnswerRepository;
+import com.Grownited.repository.StudentProgressRepository;
 import com.Grownited.repository.UserRepository;
 import com.Grownited.service.CloudinaryService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -31,6 +36,8 @@ public class StudentController {
     @Autowired private UserRepository userRepository;
     @Autowired private CloudinaryService cloudinaryService;
     @Autowired private BCryptPasswordEncoder passwordEncoder;
+    @Autowired private StudentAnswerRepository studentAnswerRepository;
+    @Autowired private StudentProgressRepository studentProgressRepository;
 
     private boolean isStudent(HttpSession session) {
         UserEntity user = (UserEntity) session.getAttribute("user");
@@ -47,11 +54,13 @@ public class StudentController {
 
         long activeExamsCount = examRepository.countByStatus(ExamEntity.Status.ACTIVE);
         long resultCount = examAttemptRepository.countByStudent(student);
+        long progressCount = studentProgressRepository.findByStudent(student).size();
+        
 
         model.addAttribute("activeExams", examRepository.findByStatus(ExamEntity.Status.ACTIVE));
         model.addAttribute("activeExamsCount", activeExamsCount);
         model.addAttribute("resultCount", resultCount);
-
+        model.addAttribute("progressCount", progressCount);
         return "student/StudentDashboard";
     }
 
@@ -98,7 +107,151 @@ public class StudentController {
     // =========================
     // SUBMIT EXAM
     // =========================
+    
     @PostMapping("/submitExam")
+    public String submitExam(@RequestParam Integer examId,
+                             HttpServletRequest request,
+                             Model model, HttpSession session) {
+
+        if (!isStudent(session)) return "redirect:/login";
+        UserEntity student = (UserEntity) session.getAttribute("user");
+
+        ExamEntity exam = examRepository.findById(examId).orElse(null);
+        if (exam == null) return "redirect:/student/exams";
+
+        List<ExamQuestionEntity> examQuestions =
+                examQuestionRepository.findByExam_ExamId(examId);
+
+        int totalQuestions = examQuestions.size();
+        int correctAnswers = 0;
+        int wrongAnswers   = 0;
+        int unanswered     = 0;
+        double marksObtained = 0.0;
+        double totalMarks    = 0.0;
+
+        // =====================
+        // STEP 1: Save ExamAttempt first (needed for StudentAnswer FK)
+        // =====================
+        ExamAttemptEntity attempt = new ExamAttemptEntity();
+        attempt.setExam(exam);
+        attempt.setStudent(student);
+        attempt.setCreatedBy(exam.getCreatedBy());
+        attempt.setStartTime(java.time.LocalDateTime.now());
+        attempt.setStatus(ExamAttemptEntity.Status.IN_PROGRESS);
+        examAttemptRepository.save(attempt); // save early to get attemptId
+
+        // =====================
+        // STEP 2: Process each question + save StudentAnswer
+        // =====================
+        for (ExamQuestionEntity eq : examQuestions) {
+            QuestionBankEntity q = eq.getQuestion();
+            if (q == null) continue;
+
+            double qMarks = (q.getMarks() != null) ? q.getMarks() : 0.0;
+            totalMarks += qMarks;
+
+            String selected = request.getParameter("answer_" + q.getQuestionId());
+            String correct  = q.getCorrectOption();
+
+            boolean isCorrect = false;
+            int marksAwarded  = 0;
+
+            if (selected == null || selected.isBlank()) {
+                unanswered++;
+            } else if (selected.equalsIgnoreCase(correct)) {
+                correctAnswers++;
+                marksObtained += qMarks;
+                isCorrect    = true;
+                marksAwarded = q.getMarks() != null ? q.getMarks() : 0;
+            } else {
+                wrongAnswers++;
+                if (Boolean.TRUE.equals(exam.getNegativeMarking())) {
+                    marksObtained -= 0.25;
+                }
+            }
+
+            StudentAnswerEntity answer = new StudentAnswerEntity();
+            answer.setAttempt(attempt);
+            answer.setQuestion(q);
+            answer.setSelectedOption(selected != null ? selected : "");
+            answer.setIsCorrect(isCorrect);
+            answer.setMarksAwarded(marksAwarded);
+            studentAnswerRepository.save(answer);
+        }
+
+
+        // =====================
+        // STEP 3: Calculate final scores
+        // =====================
+        double percentage = (totalMarks > 0)
+                ? Math.round((marksObtained / totalMarks) * 10000.0) / 100.0
+                : 0.0;
+        marksObtained = Math.round(marksObtained * 100.0) / 100.0;
+
+        boolean passed = exam.getPassingScore() != null
+                && marksObtained >= exam.getPassingScore();
+
+        // =====================
+        // STEP 4: Update ExamAttempt with final results
+        // =====================
+        attempt.setEndTime(java.time.LocalDateTime.now());
+        attempt.setTotalScore(marksObtained);
+        attempt.setPercentage(percentage);
+        attempt.setStatus(ExamAttemptEntity.Status.COMPLETED);
+        attempt.setResult(passed
+                ? ExamAttemptEntity.Result.PASS
+                : ExamAttemptEntity.Result.FAIL);
+        examAttemptRepository.save(attempt);
+
+        // =====================
+        // STEP 5: Update StudentProgress per subject
+        // =====================
+        SubjectEntity subject = exam.getSubject();
+        if (subject != null) {
+            StudentProgressEntity progress =
+                    studentProgressRepository.findByStudentAndSubject(student, subject);
+
+            if (progress == null) {
+                progress = new StudentProgressEntity();
+                progress.setStudent(student);
+                progress.setSubject(subject);
+                progress.setTotalAttempts(1);
+                progress.setAverageScore(marksObtained);
+                progress.setBestScore(marksObtained);
+            } else {
+                int attempts = progress.getTotalAttempts() + 1;
+                double newAvg = ((progress.getAverageScore()
+                        * progress.getTotalAttempts()) + marksObtained) / attempts;
+                progress.setTotalAttempts(attempts);
+                progress.setAverageScore(Math.round(newAvg * 100.0) / 100.0);
+                if (marksObtained > progress.getBestScore()) {
+                    progress.setBestScore(marksObtained);
+                }
+            }
+            progress.setLastUpdated(java.time.LocalDateTime.now());
+            studentProgressRepository.save(progress);
+        }
+
+        // =====================
+        // STEP 6: Pass data to result page
+        // =====================
+        model.addAttribute("exam",           exam);
+        model.addAttribute("student",        student);
+        model.addAttribute("attempt",        attempt);
+        model.addAttribute("totalQuestions", totalQuestions);
+        model.addAttribute("correctAnswers", correctAnswers);
+        model.addAttribute("wrongAnswers",   wrongAnswers);
+        model.addAttribute("unanswered",     unanswered);
+        model.addAttribute("marksObtained",  marksObtained);
+        model.addAttribute("totalMarks",     totalMarks);
+        model.addAttribute("percentage",     percentage);
+        model.addAttribute("passed",         passed);
+
+        return "student/ExamResult";
+    }
+    
+    
+   /* @PostMapping("/submitExam")
     public String submitExam(@RequestParam Integer examId,
                              HttpServletRequest request,
                              Model model, HttpSession session) {
@@ -172,11 +325,12 @@ public class StudentController {
         model.addAttribute("passed", passed);
 
         return "student/ExamResult";
-    }
+    }*/
 
     // =========================
     // MY RESULTS
     // =========================
+    
     @GetMapping("/results")
     public String studentResults(HttpSession session, Model model) {
         if (!isStudent(session)) return "redirect:/login";
@@ -186,6 +340,22 @@ public class StudentController {
 
         model.addAttribute("results", results);
         return "student/Results";
+    }
+    
+    // =========================
+    // PROGRESS
+    // =========================
+    
+    @GetMapping("/progress")
+    public String progress(HttpSession session, Model model) {
+        if (!isStudent(session)) return "redirect:/login";
+        UserEntity student = (UserEntity) session.getAttribute("user");
+
+        List<StudentProgressEntity> progressList =
+                studentProgressRepository.findByStudent(student);
+
+        model.addAttribute("progressList", progressList);
+        return "student/Progress";
     }
 
     // =========================
@@ -203,6 +373,7 @@ public class StudentController {
         return "student/Profile";
     }
 
+    
     @PostMapping("/updateProfile")
     public String updateProfile(@RequestParam String firstName,
                                 @RequestParam String lastName,

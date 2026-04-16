@@ -20,8 +20,10 @@
 
       <div class="mb-3">
         <label class="form-label fw-bold">Exam</label>
-        <select name="examId" class="form-select" required>
-          <option value="">-- Select Exam --</option>
+        
+        <select name="examId" class="form-control" required>
+      <option value="">Select Exam</option>
+
           <c:forEach var="e" items="${exams}">
             <option value="${e.examId}">
               ${e.examName}
@@ -31,7 +33,7 @@
         </select>
       </div>
 
-      <div class="mb-3">
+     <!--   <div class="mb-3">
         <label class="form-label fw-bold">Subject</label>
         <select name="subjectId" class="form-select" required>
           <option value="">-- Select Subject --</option>
@@ -49,7 +51,7 @@
             <option value="${d.difficultyId}">${d.level}</option>
           </c:forEach>
         </select>
-      </div>
+      </div> -->
 
       <div class="mb-3">
         <label class="form-label fw-bold">Question Text</label>

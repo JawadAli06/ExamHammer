@@ -107,6 +107,11 @@
     <a href="${pageContext.request.contextPath}/student/results">
       <i class="bi bi-bar-chart me-2"></i>My Results
     </a>
+    
+    <div class="sidebar-section-label">Progress</div>
+    <a href="${pageContext.request.contextPath}/student/progress">
+     <i class="bi bi-graph-up me-2"></i>My Progress
+   </a>
 
     <hr style="border-color:rgba(255,255,255,0.2);margin:12px 14px;">
     <a href="${pageContext.request.contextPath}/logout" class="text-warning">

@@ -80,6 +80,21 @@
     </div>
   </div>
 
+  <div class="col-12 col-md-6 col-xl-3">
+  <div class="widget-card"
+       onclick="location.href='${pageContext.request.contextPath}/student/progress'">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <div class="widget-label">My Progress</div>
+        <div class="widget-num">${progressCount != null ? progressCount : 0}</div>
+      </div>
+      <div class="widget-icon" style="background:#fff6e8;color:#fd7e14;">
+        <i class="bi bi-graph-up"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
 </div>
 
 <div class="row g-3 mt-2">

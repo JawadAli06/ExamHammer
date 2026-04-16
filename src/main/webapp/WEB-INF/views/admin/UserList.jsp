@@ -25,8 +25,17 @@
                     <td>${user.email}</td>
                     <td>${user.role}</td>
                     <td>
-                        <a href="${pageContext.request.contextPath}/admin/users/edit/${user.userId}" class="btn btn-warning btn-sm">Edit</a>
-                        <a href="${pageContext.request.contextPath}/admin/users/delete/${user.userId}" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure?')">Delete</a>
+                        
+                          <a href="${pageContext.request.contextPath}/admin/users/view/${user.userId}" 
+                          class="btn btn-info btn-sm">View</a>
+
+                          <a href="${pageContext.request.contextPath}/admin/users/edit/${user.userId}" 
+                          class="btn btn-warning btn-sm">Edit</a>
+
+                          <a href="${pageContext.request.contextPath}/admin/users/delete/${user.userId}" 
+                          class="btn btn-danger btn-sm" 
+                          onclick="return confirm('Are you sure?')">Delete</a>
+
                     </td>
                 </tr>
             </c:forEach>

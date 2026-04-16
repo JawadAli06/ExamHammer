@@ -1,4 +1,5 @@
 <%@ include file="/WEB-INF/views/examiner/examiner_header.jsp" %>
+<%@ page contentType="text/html;charset=UTF-8" pageEncoding="UTF-8" %>
 
 <div class="container mt-4">
     <div class="card shadow-sm border-0 rounded-4">

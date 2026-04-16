@@ -17,6 +17,9 @@
             <th>Exam Name</th>
             <th>Total Marks</th>
             <th>Action</th>
+            <th>Status</th>
+
+
         </tr>
     </thead>
     <tbody>
@@ -25,9 +28,12 @@
                 <td>${e.examId}</td>
                 <td>${e.examName}</td>
                 <td>${e.totalMarks}</td>
+                <td>${e.status}</td>
                 <td>
+                   <a href="${pageContext.request.contextPath}/admin/exams/view/${e.examId}" 
+                    class="btn btn-info btn-sm">View</a>
                     <a href="${pageContext.request.contextPath}/admin/exams/edit/${e.examId}" class="btn btn-warning btn-sm">Edit</a>
-                    <a href="${pageContext.request.contextPath}/admin/exams/delete/${e.examId}" class="btn btn-danger btn-sm">Delete</a>
+                    <a href="${pageContext.request.contextPath}/admin/exams/delete/${e.examId}" class="btn btn-danger btn-sm"onclick="return confirm('Are you sure you want to mark this exam as INACTIVE?')">Inactivate</a>
                 </td>
             </tr>
         </c:forEach>
